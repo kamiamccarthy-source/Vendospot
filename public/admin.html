@@ -7,381 +7,536 @@
 <meta name="theme-color" content="#101b35">
 <title>VendoSpot | Administration</title>
 <style>
-:root{--navy:#101b35;--blue:#315efb;--bg:#f4f6fb;--ink:#17213a;--muted:#7a8499;--line:#e8ecf4;--green:#159b69;--red:#d94b55}
+:root{
+  --navy:#101b35;
+  --blue:#315efb;
+  --blue2:#1748d5;
+  --bg:#f4f6fb;
+  --white:#fff;
+  --ink:#17213a;
+  --muted:#7b8499;
+  --border:#e8ebf2;
+  --green:#159b68;
+  --red:#dc4658;
+  --orange:#d88a20;
+  --shadow:0 8px 30px rgba(20,35,70,.06);
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input,select,textarea{font:inherit}
 button{cursor:pointer}
 .hidden{display:none!important}
-.login-screen{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 80% 10%,#294b91 0,transparent 30%),linear-gradient(125deg,#101b35,#1c3261)}
-.login-card{width:100%;max-width:410px;background:#fff;padding:30px;border-radius:19px;box-shadow:0 25px 80px #0003}
-.logo{display:flex;align-items:center;gap:10px;font-size:21px;font-weight:850}
-.logo-icon{width:38px;height:38px;border-radius:12px;background:var(--blue);color:#fff;display:grid;place-items:center}
-.login-card h1{font-size:24px;margin:28px 0 7px;letter-spacing:-.8px}
-.subtitle{font-size:12px;color:var(--muted);line-height:1.7}
-.field{margin:16px 0}
-label{display:block;font-size:11px;font-weight:750;margin-bottom:7px;color:#58647a}
-input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;outline:none;font-size:13px;background:#fff}
-input:focus{border-color:#7796ff;box-shadow:0 0 0 3px #315efb13}
-.btn{border:0;border-radius:9px;padding:11px 15px;font-size:12px;font-weight:750}
-.primary{background:var(--blue);color:#fff}
-.primary:hover{background:#2449d8}
-.secondary{background:#edf1f8;color:var(--ink)}
-.success{background:#e8f8ef;color:#138050}
-.danger{background:#fff0f1;color:#c13d48}
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#101b35,#1d3d80)}
+.login-card{background:#fff;width:100%;max-width:410px;padding:34px;border-radius:20px;box-shadow:0 20px 70px #0003}
+.brand{font-size:25px;font-weight:900;letter-spacing:-1px;color:var(--navy)}
+.brand span{color:var(--blue)}
+.login-card p{color:var(--muted);font-size:14px;line-height:1.6}
+.field{margin:18px 0}
+.field label{display:block;font-size:12px;font-weight:800;margin-bottom:8px;color:#59637a}
+.field input,.field select,.field textarea{
+ width:100%;padding:13px 14px;border:1px solid var(--border);
+ border-radius:10px;outline:none;background:#fff;color:var(--ink)
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #315efb16}
+.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:800;font-size:13px}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue2)}
+.btn-light{background:#eef2ff;color:#315efb}
+.btn-danger{background:#fff0f1;color:var(--red)}
+.btn-success{background:#e8f8f0;color:var(--green)}
+.btn-muted{background:#f0f2f6;color:#59637a}
+.btn:disabled{opacity:.5;cursor:not-allowed}
 .full{width:100%}
-.message{display:none;padding:11px;border-radius:8px;font-size:12px;margin:13px 0}
-.message.error{display:block;background:#fff0f1;color:#b52f3a}
-.message.ok{display:block;background:#eafaf2;color:#13784f}
-.app{display:none;min-height:100vh}
-.sidebar{width:235px;background:var(--navy);color:#fff;position:fixed;inset:0 auto 0 0;padding:24px 16px;display:flex;flex-direction:column;z-index:5}
-.sidebar .logo{padding:0 9px 28px}
-.sidebar .logo-icon{background:#315efb}
-.side-label{font-size:9px;color:#8190ad;text-transform:uppercase;letter-spacing:1.3px;padding:15px 10px 7px}
-.nav-btn{width:100%;border:0;background:transparent;color:#b9c5dc;text-align:left;padding:12px;border-radius:9px;font-size:12px;font-weight:700;margin:3px 0}
-.nav-btn.active,.nav-btn:hover{background:#ffffff15;color:#fff}
-.sidebar-bottom{margin-top:auto}
-.main{margin-left:235px;padding:27px 30px;max-width:1600px}
-.topbar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:27px}
-.topbar h1{font-size:25px;margin:0 0 5px;letter-spacing:-.8px}
-.topbar p{font-size:11px;color:var(--muted);margin:0}
-.admin-chip{background:#eaf0ff;color:var(--blue);border-radius:30px;padding:9px 13px;font-size:10px;font-weight:800}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
-.stat{background:#fff;border:1px solid var(--line);padding:19px;border-radius:13px}
-.stat-label{font-size:10px;color:var(--muted)}
-.stat-value{font-size:26px;font-weight:850;margin-top:10px;letter-spacing:-1px}
-.stat-note{font-size:10px;color:#9aa3b5;margin-top:5px}
-.panel{background:#fff;border:1px solid var(--line);border-radius:13px;padding:19px;margin-bottom:18px}
-.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:17px}
-.panel-head h2{font-size:15px;margin:0}
-.filters{display:flex;gap:8px;flex-wrap:wrap}
-.filters select,.filters input{width:auto;min-width:130px;padding:9px;font-size:11px}
-.table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;min-width:680px}
-th,td{text-align:left;padding:13px 10px;border-bottom:1px solid var(--line);font-size:11px;vertical-align:middle}
-th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
-td strong{font-size:11px}
-.status{display:inline-block;padding:6px 9px;border-radius:20px;font-size:9px;font-weight:800;text-transform:capitalize}
-.pending{background:#fff5dc;color:#966b0a}
-.approved{background:#e8f8ef;color:#138050}
-.rejected{background:#fff0f1;color:#c13d48}
-.actions{display:flex;gap:6px;flex-wrap:wrap}
-.actions button{padding:7px 9px;font-size:10px}
-.empty{text-align:center;padding:35px;color:var(--muted);font-size:12px}
+#app{min-height:100vh}
+.sidebar{
+ position:fixed;left:0;top:0;bottom:0;width:245px;background:var(--navy);
+ padding:25px 17px;color:#fff;z-index:5;display:flex;flex-direction:column
+}
+.sidebar .brand{color:#fff;padding:0 12px 30px}
+.sidebar .brand span{color:#6d91ff}
+.side-label{font-size:10px;color:#8290b1;text-transform:uppercase;letter-spacing:1.5px;padding:12px}
+.nav-btn{
+ width:100%;border:0;background:transparent;color:#b8c2dc;
+ text-align:left;padding:13px 14px;border-radius:10px;margin:3px 0;
+ font-size:13px;font-weight:700;display:flex;align-items:center;gap:12px
+}
+.nav-btn:hover,.nav-btn.active{background:#ffffff17;color:#fff}
+.nav-icon{width:20px;text-align:center;font-size:16px}
+.sidebar-bottom{margin-top:auto;border-top:1px solid #ffffff20;padding-top:16px}
+.main{margin-left:245px;padding:28px 32px;max-width:1600px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:28px}
+.topbar h1{font-size:25px;margin:0;letter-spacing:-.7px}
+.topbar p{margin:6px 0 0;color:var(--muted);font-size:13px}
+.top-actions{display:flex;gap:9px;align-items:center}
+.admin-pill{background:#eaf0ff;color:#315efb;padding:9px 12px;border-radius:30px;font-size:12px;font-weight:800}
 .page{display:none}
 .page.active{display:block}
-.product-detail{display:grid;grid-template-columns:130px 1fr;gap:15px}
-.product-detail img{width:130px;height:120px;object-fit:cover;border-radius:10px;background:#edf1fa}
-.detail-text{font-size:12px;line-height:1.8;color:#69748a}
-.detail-text strong{color:var(--ink)}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 17px;border-radius:9px;font-size:12px;display:none;z-index:30}
-@media(max-width:850px){.sidebar{width:65px;padding:18px 8px}.sidebar .logo{padding:0 7px 25px}.logo-name,.side-label,.nav-text,.sidebar-bottom .nav-text{display:none}.nav-btn{text-align:center;font-size:17px;padding:13px 5px}.main{margin-left:65px;padding:22px 16px}.stats{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:520px){.main{padding:17px 11px}.stats{gap:8px}.stat{padding:13px}.stat-value{font-size:22px}.topbar h1{font-size:20px}.product-detail{grid-template-columns:1fr}.product-detail img{width:100%;height:180px}}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:22px}
+.stat-card,.panel{background:#fff;border:1px solid var(--border);border-radius:15px;box-shadow:var(--shadow)}
+.stat-card{padding:20px}
+.stat-label{font-size:12px;color:var(--muted);font-weight:700}
+.stat-value{font-size:25px;font-weight:900;margin-top:10px;letter-spacing:-.8px}
+.stat-note{font-size:11px;color:var(--muted);margin-top:7px}
+.panel{padding:20px;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:17px}
+.panel-head h2{font-size:16px;margin:0}
+.panel-head p{font-size:12px;color:var(--muted);margin:5px 0 0}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:650px}
+th{text-align:left;padding:12px 11px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.7px;background:#fafbfe}
+td{padding:13px 11px;border-top:1px solid var(--border);font-size:12px;vertical-align:middle}
+td strong{font-size:12px}
+.muted{color:var(--muted)}
+.status{display:inline-block;padding:5px 9px;border-radius:30px;font-size:10px;font-weight:900;text-transform:capitalize}
+.status.pending{background:#fff5e5;color:#bd7a17}
+.status.approved,.status.success,.status.paid{background:#e8f8f0;color:#128456}
+.status.rejected,.status.failed{background:#fff0f1;color:#d63d50}
+.status.processing{background:#edf2ff;color:#315efb}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.actions .btn{padding:7px 10px;font-size:11px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}
+.toolbar input,.toolbar select{padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:#fff;outline:none;font-size:12px}
+.toolbar input{min-width:190px;flex:1}
+.empty{text-align:center;padding:35px;color:var(--muted);font-size:13px}
+.wallet-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin-bottom:20px}
+.wallet-card{padding:22px;border-radius:15px;background:#fff;border:1px solid var(--border);box-shadow:var(--shadow)}
+.wallet-card.primary{background:linear-gradient(135deg,#173b9a,#315efb);color:#fff;border:0}
+.wallet-card .stat-value{font-size:27px}
+.wallet-card.primary .stat-label,.wallet-card.primary .stat-note{color:#dce5ff}
+.wallet-card.primary .stat-value{color:#fff}
+.wallet-layout{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.info-note{padding:13px 15px;background:#f1f5ff;border-radius:10px;color:#42557e;font-size:12px;line-height:1.6;margin-bottom:16px}
+.bank-display{padding:15px;background:#f8f9fc;border:1px solid var(--border);border-radius:11px;margin-bottom:15px}
+.bank-display div{font-size:11px;color:var(--muted);margin-bottom:5px}
+.bank-display strong{font-size:14px}
+.amount-row{display:flex;gap:10px;align-items:center}
+.amount-row input{flex:1;min-width:0}
+.toast{
+ position:fixed;right:22px;bottom:22px;background:#17213a;color:#fff;
+ padding:14px 18px;border-radius:11px;font-size:13px;z-index:20;
+ box-shadow:0 10px 35px #0003;max-width:calc(100% - 44px)
+}
+.mobile-menu{display:none}
+.footer-note{font-size:11px;color:var(--muted);text-align:center;padding:20px}
+@media(max-width:1050px){
+ .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .wallet-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+ .sidebar{width:100%;height:auto;bottom:auto;position:relative;padding:14px}
+ .sidebar .brand{padding:4px 8px 12px}
+ .side-label{display:none}
+ .nav-list{display:flex;overflow-x:auto;gap:5px}
+ .nav-btn{width:auto;white-space:nowrap;padding:10px 12px}
+ .sidebar-bottom{display:none}
+ .main{margin:0;padding:20px 14px}
+ .topbar{align-items:flex-start}
+ .topbar h1{font-size:21px}
+ .admin-pill{display:none}
+ .grid{gap:10px}
+ .stat-card{padding:15px}
+ .stat-value{font-size:21px}
+ .wallet-grid{grid-template-columns:1fr}
+ .wallet-layout{grid-template-columns:1fr}
+ .panel{padding:14px}
+}
 </style>
 </head>
 <body>
 
-<section class="login-screen" id="loginScreen">
-  <div class="login-card">
-    <div class="logo"><span class="logo-icon">V</span><span>VendoSpot</span></div>
-    <h1>Admin sign in</h1>
-    <p class="subtitle">Access the private VendoSpot administration dashboard.</p>
-    <form id="loginForm">
-      <div class="field"><label>ADMIN USERNAME</label><input id="username" autocomplete="username" placeholder="Administrator username" required></div>
-      <div class="field"><label>ADMIN PASSWORD</label><input id="password" type="password" autocomplete="current-password" placeholder="Your admin password" required></div>
-      <div class="message" id="loginMessage"></div>
-      <button class="btn primary full" id="loginButton">Sign in to dashboard →</button>
-    </form>
-    <p class="subtitle" style="text-align:center;margin-top:20px">Restricted access · Authorised administrators only</p>
-  </div>
+<section id="loginScreen">
+ <div class="login-card">
+  <div class="brand">Vendo<span>Spot</span></div>
+  <p>Administration portal. Sign in with your administrator credentials to manage the marketplace.</p>
+  <form id="loginForm">
+   <div class="field">
+    <label>ADMIN USERNAME</label>
+    <input id="username" autocomplete="username" required placeholder="Administrator username">
+   </div>
+   <div class="field">
+    <label>ADMIN PASSWORD</label>
+    <input id="password" type="password" autocomplete="current-password" required placeholder="Your password">
+   </div>
+   <button class="btn btn-primary full" id="loginButton">Sign in to dashboard</button>
+  </form>
+ </div>
 </section>
 
-<div class="app" id="adminApp">
-  <aside class="sidebar">
-    <div class="logo"><span class="logo-icon">V</span><span class="logo-name">VendoSpot</span></div>
-    <div class="side-label">Management</div>
-    <button class="nav-btn active" onclick="navigate('overview',this)">▦ <span class="nav-text">Overview</span></button>
-    <button class="nav-btn" onclick="navigate('products',this)">▤ <span class="nav-text">Products</span></button>
-    <button class="nav-btn" onclick="navigate('payments',this)">₦ <span class="nav-text">Payments</span></button>
-    <div class="sidebar-bottom">
-      <div class="side-label">Account</div>
-      <button class="nav-btn" onclick="refreshData()">↻ <span class="nav-text">Refresh data</span></button>
-      <button class="nav-btn" onclick="logout()">⇥ <span class="nav-text">Log out</span></button>
+<div id="app" class="hidden">
+ <aside class="sidebar">
+  <div class="brand">Vendo<span>Spot</span></div>
+  <div class="side-label">Management</div>
+  <nav class="nav-list">
+   <button class="nav-btn active" data-page="overview" onclick="navigate('overview',this)"><span class="nav-icon">▦</span>Overview</button>
+   <button class="nav-btn" data-page="products" onclick="navigate('products',this)"><span class="nav-icon">▣</span>Products</button>
+   <button class="nav-btn" data-page="payments" onclick="navigate('payments',this)"><span class="nav-icon">₦</span>Payments</button>
+   <button class="nav-btn" data-page="wallet" onclick="navigate('wallet',this)"><span class="nav-icon">◈</span>Admin Wallet</button>
+  </nav>
+  <div class="sidebar-bottom">
+   <button class="nav-btn" onclick="refreshCurrent()">↻ Refresh data</button>
+   <button class="nav-btn" onclick="logout()">↪ Log out</button>
+  </div>
+ </aside>
+
+ <main class="main">
+  <header class="topbar">
+   <div>
+    <h1 id="pageTitle">Overview</h1>
+    <p>Manage your VendoSpot marketplace.</p>
+   </div>
+   <div class="top-actions">
+    <span class="admin-pill">● Administrator</span>
+    <button class="btn btn-light" onclick="refreshCurrent()">↻ Refresh</button>
+   </div>
+  </header>
+
+  <section class="page active" id="page-overview">
+   <div class="grid">
+    <div class="stat-card"><div class="stat-label">Total sellers</div><div class="stat-value" id="sellersCount">—</div><div class="stat-note">Registered accounts</div></div>
+    <div class="stat-card"><div class="stat-label">Total products</div><div class="stat-value" id="productsCount">—</div><div class="stat-note">All submitted listings</div></div>
+    <div class="stat-card"><div class="stat-label">Pending products</div><div class="stat-value" id="pendingCount">—</div><div class="stat-note">Awaiting review</div></div>
+    <div class="stat-card"><div class="stat-label">Approved products</div><div class="stat-value" id="approvedCount">—</div><div class="stat-note">Visible in marketplace</div></div>
+   </div>
+   <div class="grid">
+    <div class="stat-card"><div class="stat-label">Successful payments</div><div class="stat-value" id="paymentsCount">—</div><div class="stat-note">Verified transactions</div></div>
+    <div class="stat-card"><div class="stat-label">Recorded revenue</div><div class="stat-value" id="revenueCount">—</div><div class="stat-note">Payment records</div></div>
+    <div class="stat-card"><div class="stat-label">Pending withdrawals</div><div class="stat-value" id="pendingWithdrawalCount">—</div><div class="stat-note">Admin wallet requests</div></div>
+    <div class="stat-card"><div class="stat-label">Available wallet balance</div><div class="stat-value" id="availableWalletCount">—</div><div class="stat-note">Live payments only</div></div>
+   </div>
+   <div class="panel">
+    <div class="panel-head"><div><h2>Recent product submissions</h2><p>Latest listings submitted by sellers.</p></div><button class="btn btn-light" onclick="navigate('products')">View all</button></div>
+    <div class="table-wrap"><table><thead><tr><th>Product</th><th>Seller</th><th>Price</th><th>Status</th><th>Date</th></tr></thead><tbody id="recentProducts"></tbody></table></div>
+   </div>
+  </section>
+
+  <section class="page" id="page-products">
+   <div class="panel">
+    <div class="panel-head"><div><h2>Product management</h2><p>Review submitted products before publishing.</p></div></div>
+    <div class="toolbar">
+     <input id="productSearch" placeholder="Search product or seller..." oninput="renderProducts()">
+     <select id="productFilter" onchange="renderProducts()">
+      <option value="">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option>
+     </select>
     </div>
-  </aside>
+    <div class="table-wrap"><table><thead><tr><th>Product</th><th>Seller</th><th>Price</th><th>Category</th><th>Status</th><th>Actions</th></tr></thead><tbody id="productsTable"></tbody></table></div>
+   </div>
+  </section>
 
-  <main class="main">
-    <header class="topbar">
-      <div><h1 id="pageTitle">Overview</h1><p>Manage your VendoSpot marketplace.</p></div>
-      <span class="admin-chip">● ADMINISTRATOR</span>
-    </header>
+  <section class="page" id="page-payments">
+   <div class="panel">
+    <div class="panel-head"><div><h2>Payment records</h2><p>Customer listing payments and their verification status.</p></div></div>
+    <div class="toolbar"><input id="paymentSearch" placeholder="Search reference or seller..." oninput="renderPayments()"></div>
+    <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Seller</th><th>Products</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead><tbody id="paymentsTable"></tbody></table></div>
+   </div>
+  </section>
 
-    <section class="page active" id="overviewPage">
-      <div class="stats">
-        <div class="stat"><div class="stat-label">Total products</div><div class="stat-value" id="totalProducts">—</div><div class="stat-note">All submitted listings</div></div>
-        <div class="stat"><div class="stat-label">Pending review</div><div class="stat-value" id="pendingProducts">—</div><div class="stat-note">Awaiting your decision</div></div>
-        <div class="stat"><div class="stat-label">Approved products</div><div class="stat-value" id="approvedProducts">—</div><div class="stat-note">Published marketplace listings</div></div>
-        <div class="stat"><div class="stat-label">Verified payments</div><div class="stat-value" id="totalRevenue">—</div><div class="stat-note">Confirmed listing payments</div></div>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h2>Products awaiting review</h2><button class="btn secondary" onclick="navigate('products')">View all products →</button></div>
-        <div class="table-wrap"><table><thead><tr><th>Product</th><th>Seller</th><th>Price</th><th>Status</th><th>Action</th></tr></thead><tbody id="recentProducts"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody></table></div>
-      </div>
-    </section>
+  <section class="page" id="page-wallet">
+   <div class="info-note">
+    <strong>Admin revenue wallet:</strong> Only successful payments made using your Paystack Live Secret Key count as withdrawable revenue. Test-mode and unclassified historical payments are excluded. Sellers do not receive balances in this wallet.
+   </div>
+   <div class="wallet-grid">
+    <div class="wallet-card"><div class="stat-label">Total live revenue</div><div class="stat-value" id="walletRevenue">₦0.00</div><div class="stat-note">Verified live payments</div></div>
+    <div class="wallet-card primary"><div class="stat-label">Available to withdraw</div><div class="stat-value" id="walletAvailable">₦0.00</div><div class="stat-note">After pending withdrawals</div></div>
+    <div class="wallet-card"><div class="stat-label">Pending withdrawals</div><div class="stat-value" id="walletPending">₦0.00</div><div class="stat-note">Reserved for payout requests</div></div>
+   </div>
+   <div class="wallet-layout">
+    <div class="panel">
+     <div class="panel-head"><div><h2>Bank account</h2><p>Account where you receive manual withdrawals.</p></div></div>
+     <div class="bank-display" id="bankDisplay"><div>Saved bank details</div><strong>No bank account saved</strong></div>
+     <form id="bankForm">
+      <div class="field"><label>BANK NAME</label><input id="bankName" required placeholder="e.g. Access Bank"></div>
+      <div class="field"><label>ACCOUNT NUMBER</label><input id="accountNumber" required inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="10-digit account number"></div>
+      <div class="field"><label>ACCOUNT NAME</label><input id="accountName" required placeholder="Account holder name"></div>
+      <button class="btn btn-primary full" type="submit">Save bank details</button>
+     </form>
+     <p class="muted" style="font-size:11px;line-height:1.6">Enter your own receiving account. This version stores the details for manual payouts; it does not automatically verify the account with your bank.</p>
+    </div>
+    <div class="panel">
+     <div class="panel-head"><div><h2>Request withdrawal</h2><p>Request a manual payout from available live revenue.</p></div></div>
+     <div class="info-note">You must save your bank account details before requesting a withdrawal. A request reserves the amount until it is marked paid or rejected.</div>
+     <form id="withdrawForm">
+      <div class="field"><label>WITHDRAWAL AMOUNT (₦)</label><input id="withdrawAmount" type="number" min="1" step="0.01" required placeholder="Enter amount"></div>
+      <button class="btn btn-primary full" type="submit">Submit withdrawal request</button>
+     </form>
+     <p class="muted" style="font-size:11px;line-height:1.6">Manual transfer: after submitting, transfer the funds using your bank app. Then record the transfer reference and mark the request as paid here.</p>
+    </div>
+   </div>
+   <div class="panel">
+    <div class="panel-head"><div><h2>Withdrawal history</h2><p>Track and process your payout requests.</p></div><button class="btn btn-light" onclick="loadWallet()">Refresh</button></div>
+    <div class="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Bank details</th><th>Status</th><th>Transfer reference</th><th>Actions</th></tr></thead><tbody id="withdrawalsTable"></tbody></table></div>
+   </div>
+  </section>
 
-    <section class="page" id="productsPage">
-      <div class="panel">
-        <div class="panel-head">
-          <h2>Marketplace product management</h2>
-          <div class="filters">
-            <select id="statusFilter" onchange="loadProducts()">
-              <option value="">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-            <input id="productSearch" placeholder="Search products..." oninput="renderProducts()">
-            <button class="btn secondary" onclick="loadProducts()">↻ Refresh</button>
-          </div>
-        </div>
-        <div class="table-wrap"><table><thead><tr><th>Product</th><th>Seller</th><th>Price</th><th>Category</th><th>Status</th><th>Actions</th></tr></thead><tbody id="productsBody"><tr><td colspan="6" class="empty">Loading products...</td></tr></tbody></table></div>
-      </div>
-    </section>
-
-    <section class="page" id="paymentsPage">
-      <div class="panel">
-        <div class="panel-head"><h2>Listing payment activity</h2><button class="btn secondary" onclick="loadPayments()">↻ Refresh</button></div>
-        <p class="subtitle">This page displays payment records returned by the backend. Only server-verified successful payments should be counted as revenue.</p>
-        <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Seller</th><th>Products</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead><tbody id="paymentsBody"><tr><td colspan="6" class="empty">Loading payment records...</td></tr></tbody></table></div>
-      </div>
-    </section>
-  </main>
+  <div class="footer-note">VendoSpot Administration · Manage your marketplace responsibly.</div>
+ </main>
 </div>
 
-<div class="toast" id="toast"></div>
+<div id="toast" class="toast hidden"></div>
 
 <script>
-const API = "";
-let adminToken = localStorage.getItem("vendospot_admin_token") || "";
-let allProducts = [];
+const API="";
+let adminToken=localStorage.getItem("vendospot_admin_token")||"";
+let allProducts=[];
+let allPayments=[];
+let walletData=null;
+let toastTimer;
 
+function money(value){
+ const n=Number(value||0);
+ return "₦"+n.toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
 function escapeHTML(value){
-  return String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
-function money(value){return "₦"+Number(value||0).toLocaleString("en-NG")}
-function toast(text){
-  const el=document.getElementById("toast");
-  el.textContent=text;el.style.display="block";
-  setTimeout(()=>el.style.display="none",3000);
+function toast(message){
+ const el=document.getElementById("toast");
+ el.textContent=message;
+ el.classList.remove("hidden");
+ clearTimeout(toastTimer);
+ toastTimer=setTimeout(()=>el.classList.add("hidden"),3500);
 }
-function showMessage(id,text,type="error"){
-  const el=document.getElementById(id);
-  el.textContent=text;el.className="message "+type;
+function statusBadge(status){
+ const s=String(status||"pending").toLowerCase();
+ return `<span class="status ${escapeHTML(s)}">${escapeHTML(s)}</span>`;
 }
 async function api(path,options={}){
-  const headers={...(options.headers||{})};
-  if(adminToken)headers.Authorization="Bearer "+adminToken;
-  if(options.body)headers["Content-Type"]="application/json";
-  const response=await fetch(API+path,{...options,headers});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok){
-    if(response.status===401||response.status===403){
-      logout(false);
-    }
-    throw new Error(data.error||data.message||"Request failed.");
-  }
-  return data;
+ const headers={...(options.headers||{}),"Content-Type":"application/json"};
+ if(adminToken)headers.Authorization="Bearer "+adminToken;
+ const response=await fetch(API+path,{...options,headers});
+ let data={};
+ try{data=await response.json()}catch(e){}
+ if(response.status===401||response.status===403){
+  logout();
+  throw new Error(data.message||"Your session has expired. Please sign in again.");
+ }
+ if(!response.ok)throw new Error(data.message||"Request failed. Please try again.");
+ return data;
 }
 
-document.getElementById("loginForm").addEventListener("submit",async event=>{
-  event.preventDefault();
-  const button=document.getElementById("loginButton");
-  button.disabled=true;button.textContent="Signing in...";
-  try{
-    const result=await fetch("/api/admin/login",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        username:document.getElementById("username").value.trim(),
-        password:document.getElementById("password").value
-      })
-    });
-    const data=await result.json().catch(()=>({}));
-    if(!result.ok)throw new Error(data.error||"Invalid administrator credentials.");
-    if(!data.token)throw new Error("The server did not return an admin token.");
-    adminToken=data.token;
-    localStorage.setItem("vendospot_admin_token",adminToken);
-    enterDashboard();
-  }catch(error){
-    showMessage("loginMessage",error.message);
-  }finally{
-    button.disabled=false;button.textContent="Sign in to dashboard →";
-  }
+document.getElementById("loginForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const button=document.getElementById("loginButton");
+ button.disabled=true;button.textContent="Signing in...";
+ try{
+  const data=await api("/api/admin/login",{method:"POST",body:JSON.stringify({
+   username:document.getElementById("username").value.trim(),
+   password:document.getElementById("password").value
+  })});
+  if(!data.token)throw new Error("Admin token was not returned.");
+  adminToken=data.token;
+  localStorage.setItem("vendospot_admin_token",adminToken);
+  enterDashboard();
+ }catch(err){toast(err.message)}
+ finally{button.disabled=false;button.textContent="Sign in to dashboard"}
 });
 
 function enterDashboard(){
-  document.getElementById("loginScreen").classList.add("hidden");
-  document.getElementById("adminApp").style.display="block";
-  refreshData();
+ document.getElementById("loginScreen").classList.add("hidden");
+ document.getElementById("app").classList.remove("hidden");
+ refreshData();
 }
-function logout(show=true){
-  adminToken="";
-  localStorage.removeItem("vendospot_admin_token");
-  document.getElementById("adminApp").style.display="none";
-  document.getElementById("loginScreen").classList.remove("hidden");
-  if(show)toast("You have been logged out.");
+function logout(){
+ adminToken="";
+ localStorage.removeItem("vendospot_admin_token");
+ document.getElementById("app").classList.add("hidden");
+ document.getElementById("loginScreen").classList.remove("hidden");
 }
 function navigate(page,button){
-  document.querySelectorAll(".page").forEach(el=>el.classList.remove("active"));
-  document.getElementById(page+"Page").classList.add("active");
-  document.querySelectorAll(".nav-btn").forEach(el=>el.classList.remove("active"));
-  if(button)button.classList.add("active");
-  else{
-    const index={overview:0,products:1,payments:2}[page];
-    document.querySelectorAll(".nav-btn")[index]?.classList.add("active");
-  }
-  document.getElementById("pageTitle").textContent={overview:"Overview",products:"Products",payments:"Payments"}[page];
-  if(page==="products")loadProducts();
-  if(page==="payments")loadPayments();
+ document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+ document.getElementById("page-"+page).classList.add("active");
+ document.querySelectorAll(".nav-btn[data-page]").forEach(b=>b.classList.remove("active"));
+ const selected=button||document.querySelector(`[data-page="${page}"]`);
+ if(selected)selected.classList.add("active");
+ const titles={overview:"Overview",products:"Products",payments:"Payments",wallet:"Admin Wallet"};
+ document.getElementById("pageTitle").textContent=titles[page]||"Dashboard";
+ if(page==="products")loadProducts();
+ if(page==="payments")loadPayments();
+ if(page==="wallet")loadWallet();
+}
+async function refreshCurrent(){
+ const page=document.querySelector(".page.active")?.id.replace("page-","");
+ if(page==="wallet")return loadWallet();
+ if(page==="products")return loadProducts();
+ if(page==="payments")return loadPayments();
+ return refreshData();
 }
 async function refreshData(){
-  try{
-    await Promise.all([loadStats(),loadProducts()]);
-    renderRecentProducts();
-  }catch(error){toast(error.message)}
+ try{
+  const [stats,products]=await Promise.all([
+   api("/api/admin/stats"),
+   api("/api/admin/products")
+  ]);
+  allProducts=Array.isArray(products)?products:(products.products||[]);
+  document.getElementById("sellersCount").textContent=stats.totalSellers??stats.sellers??0;
+  document.getElementById("productsCount").textContent=stats.totalProducts??stats.products??allProducts.length;
+  document.getElementById("pendingCount").textContent=stats.pendingProducts??stats.pending??0;
+  document.getElementById("approvedCount").textContent=stats.approvedProducts??stats.approved??0;
+  document.getElementById("paymentsCount").textContent=stats.successfulPayments??stats.payments??0;
+  document.getElementById("revenueCount").textContent=money(stats.totalRevenue??stats.revenue??0);
+  renderRecentProducts();
+  loadWalletSummaryForOverview();
+ }catch(err){toast(err.message)}
 }
-async function loadStats(){
-  const result=await api("/api/admin/stats");
-  const stats=result.stats||result;
-  document.getElementById("totalProducts").textContent=stats.totalProducts??stats.total_products??0;
-  document.getElementById("pendingProducts").textContent=stats.pendingProducts??stats.pending_products??0;
-  document.getElementById("approvedProducts").textContent=stats.approvedProducts??stats.approved_products??0;
-  const revenue=stats.totalRevenue??stats.total_revenue??0;
-  document.getElementById("totalRevenue").textContent=money(revenue);
-}
-async function loadProducts(){
-  const body=document.getElementById("productsBody");
-  if(body)body.innerHTML='<tr><td colspan="6" class="empty">Loading products...</td></tr>';
-  try{
-    const status=document.getElementById("statusFilter")?.value||"";
-    const result=await api("/api/admin/products"+(status?"?status="+encodeURIComponent(status):""));
-    allProducts=Array.isArray(result)?result:(result.products||[]);
-    renderProducts();
-    renderRecentProducts();
-  }catch(error){
-    if(body)body.innerHTML='<tr><td colspan="6" class="empty">'+escapeHTML(error.message)+'</td></tr>';
-  }
-}
-function productStatus(status){
-  const value=String(status||"pending").toLowerCase();
-  return '<span class="status '+escapeHTML(value)+'">'+escapeHTML(value)+'</span>';
-}
-function renderProducts(){
-  const body=document.getElementById("productsBody");
-  if(!body)return;
-  const query=(document.getElementById("productSearch")?.value||"").toLowerCase();
-  const items=allProducts.filter(p=>[p.name,p.title,p.seller_name,p.email,p.category].join(" ").toLowerCase().includes(query));
-  if(!items.length){
-    body.innerHTML='<tr><td colspan="6" class="empty">No products found.</td></tr>';
-    return;
-  }
-  body.innerHTML=items.map(p=>{
-    const id=Number(p.id);
-    const status=String(p.status||"pending").toLowerCase();
-    return `<tr>
-      <td><strong>${escapeHTML(p.name||p.title||"Product")}</strong></td>
-      <td>${escapeHTML(p.seller_name||p.email||"Seller")}</td>
-      <td>${money(p.price)}</td>
-      <td>${escapeHTML(p.category||"Other")}</td>
-      <td>${productStatus(status)}</td>
-      <td><div class="actions">
-        <button class="btn secondary" onclick="viewProduct(${id})">View</button>
-        ${status!=="approved"?`<button class="btn success" onclick="updateStatus(${id},'approved')">Approve</button>`:""}
-        ${status!=="rejected"?`<button class="btn danger" onclick="updateStatus(${id},'rejected')">Reject</button>`:""}
-      </div></td>
-    </tr>`;
-  }).join("");
+function sellerName(p){
+ return p.seller_name||p.name||p.email||p.seller_email||"Seller";
 }
 function renderRecentProducts(){
-  const body=document.getElementById("recentProducts");
-  if(!body)return;
-  const items=allProducts.filter(p=>String(p.status||"pending").toLowerCase()==="pending").slice(0,8);
-  if(!items.length){
-    body.innerHTML='<tr><td colspan="5" class="empty">No products are waiting for review.</td></tr>';
-    return;
-  }
-  body.innerHTML=items.map(p=>{
-    const id=Number(p.id);
-    return `<tr>
-      <td><strong>${escapeHTML(p.name||p.title||"Product")}</strong></td>
-      <td>${escapeHTML(p.seller_name||p.email||"Seller")}</td>
-      <td>${money(p.price)}</td>
-      <td>${productStatus(p.status)}</td>
-      <td><div class="actions"><button class="btn success" onclick="updateStatus(${id},'approved')">Approve</button><button class="btn danger" onclick="updateStatus(${id},'rejected')">Reject</button></div></td>
-    </tr>`;
-  }).join("");
+ const rows=allProducts.slice(0,8);
+ document.getElementById("recentProducts").innerHTML=rows.length?rows.map(p=>`
+ <tr><td><strong>${escapeHTML(p.title)}</strong></td>
+ <td>${escapeHTML(sellerName(p))}</td>
+ <td>${money(p.price)}</td><td>${statusBadge(p.status)}</td>
+ <td>${p.created_at?new Date(p.created_at).toLocaleDateString():"—"}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">No product submissions yet.</td></tr>`;
 }
-async function updateStatus(id,status){
-  if(!Number.isSafeInteger(id)||id<=0)return toast("Invalid product ID.");
-  const action=status==="approved"?"approve":"reject";
-  if(!confirm("Are you sure you want to "+action+" this product?"))return;
-  try{
-    await api("/api/admin/products/"+id+"/status",{
-      method:"PATCH",
-      body:JSON.stringify({status})
-    });
-    toast("Product "+status+".");
-    await refreshData();
-  }catch(error){toast(error.message)}
+async function loadProducts(){
+ try{
+  const data=await api("/api/admin/products");
+  allProducts=Array.isArray(data)?data:(data.products||[]);
+  renderProducts();renderRecentProducts();
+ }catch(err){toast(err.message)}
 }
-function viewProduct(id){
-  const p=allProducts.find(item=>Number(item.id)===id);
-  if(!p)return;
-  const image=p.image_url||p.image||"";
-  const content=`
-    <div class="product-detail">
-      ${image?`<img src="${escapeHTML(image)}" alt="Product image">`:'<div class="empty">No image</div>'}
-      <div class="detail-text">
-        <strong>${escapeHTML(p.name||p.title||"Product")}</strong><br>
-        Seller: ${escapeHTML(p.seller_name||"—")}<br>
-        Email: ${escapeHTML(p.email||"—")}<br>
-        Price: ${money(p.price)}<br>
-        Category: ${escapeHTML(p.category||"Other")}<br>
-        Status: ${escapeHTML(p.status||"pending")}<br>
-        Location: ${escapeHTML(p.location||"—")}<br>
-        Description: ${escapeHTML(p.description||"No description")}
-      </div>
-    </div>`;
-  const win=window.open("","_blank");
-  if(!win)return toast("Allow pop-ups to view product details.");
-  win.document.write("<!doctype html><html><head><title>Product details</title><meta name='viewport' content='width=device-width'></head><body style='font-family:Arial;padding:20px;max-width:700px;margin:auto'>"+content+"</body></html>");
-  win.document.close();
+function renderProducts(){
+ const search=(document.getElementById("productSearch").value||"").toLowerCase();
+ const filter=document.getElementById("productFilter").value;
+ const list=allProducts.filter(p=>{
+  const matches=(p.title+" "+sellerName(p)+" "+(p.category||"")).toLowerCase().includes(search);
+  return matches&&(!filter||String(p.status).toLowerCase()===filter);
+ });
+ document.getElementById("productsTable").innerHTML=list.length?list.map(p=>`
+ <tr>
+  <td><strong>${escapeHTML(p.title)}</strong><br><span class="muted">${escapeHTML(p.location||"")}</span></td>
+  <td>${escapeHTML(sellerName(p))}</td><td>${money(p.price)}</td>
+  <td>${escapeHTML(p.category||"—")}</td><td>${statusBadge(p.status)}</td>
+  <td><div class="actions">
+   <button class="btn btn-success" onclick="updateProduct(${Number(p.id)},'approved')">Approve</button>
+   <button class="btn btn-danger" onclick="updateProduct(${Number(p.id)},'rejected')">Reject</button>
+  </div></td>
+ </tr>`).join(""):`<tr><td colspan="6" class="empty">No products found.</td></tr>`;
+}
+async function updateProduct(id,status){
+ if(!confirm("Are you sure you want to "+status+" this product?"))return;
+ try{
+  await api("/api/admin/products/"+id+"/status",{method:"PATCH",body:JSON.stringify({status})});
+  toast("Product "+status+".");
+  await loadProducts();await refreshData();
+ }catch(err){toast(err.message)}
 }
 async function loadPayments(){
-  const body=document.getElementById("paymentsBody");
-  body.innerHTML='<tr><td colspan="6" class="empty">Loading payment records...</td></tr>';
-  try{
-    const result=await api("/api/admin/payments");
-    const items=Array.isArray(result)?result:(result.payments||[]);
-    if(!items.length){
-      body.innerHTML='<tr><td colspan="6" class="empty">No payment records found.</td></tr>';
-      return;
-    }
-    body.innerHTML=items.map(p=>`<tr>
-      <td>${escapeHTML(p.reference||"—")}</td>
-      <td>${escapeHTML(p.seller_name||p.email||"—")}</td>
-      <td>${escapeHTML(p.product_count??p.productCount??"—")}</td>
-      <td>${money(p.amount)}</td>
-      <td>${productStatus(p.status||"pending")}</td>
-      <td>${escapeHTML(p.created_at?new Date(p.created_at).toLocaleDateString():"—")}</td>
-    </tr>`).join("");
-  }catch(error){
-    body.innerHTML='<tr><td colspan="6" class="empty">'+escapeHTML(error.message)+'</td></tr>';
-  }
+ try{
+  const data=await api("/api/admin/payments");
+  allPayments=Array.isArray(data)?data:(data.payments||[]);
+  renderPayments();
+ }catch(err){toast(err.message)}
+}
+function renderPayments(){
+ const search=(document.getElementById("paymentSearch").value||"").toLowerCase();
+ const list=allPayments.filter(p=>(String(p.reference||"")+" "+String(p.email||p.seller_email||"")).toLowerCase().includes(search));
+ document.getElementById("paymentsTable").innerHTML=list.length?list.map(p=>`
+ <tr><td><strong>${escapeHTML(p.reference)}</strong></td>
+ <td>${escapeHTML(p.email||p.seller_email||"—")}</td>
+ <td>${escapeHTML(p.product_count??"—")}</td>
+ <td>${money(Number(p.amount_kobo||0)/100)}</td>
+ <td>${statusBadge(p.status)}</td>
+ <td>${p.paid_at?new Date(p.paid_at).toLocaleDateString():p.created_at?new Date(p.created_at).toLocaleDateString():"—"}</td></tr>`).join(""):`<tr><td colspan="6" class="empty">No payment records found.</td></tr>`;
+}
+
+async function loadWallet(){
+ try{
+  const data=await api("/api/admin/wallet");
+  walletData=data;
+  renderWallet(data);
+ }catch(err){
+  toast(err.message);
+  document.getElementById("withdrawalsTable").innerHTML=`<tr><td colspan="6" class="empty">Wallet data could not be loaded. The wallet backend must be installed in server.js.</td></tr>`;
+ }
+}
+async function loadWalletSummaryForOverview(){
+ try{
+  const data=await api("/api/admin/wallet");
+  walletData=data;
+  document.getElementById("pendingWithdrawalCount").textContent=money(data.pendingWithdrawalAmount??data.pendingWithdrawalsAmount??0);
+  document.getElementById("availableWalletCount").textContent=money(data.availableBalance??0);
+ }catch(e){
+  document.getElementById("pendingWithdrawalCount").textContent="—";
+  document.getElementById("availableWalletCount").textContent="—";
+ }
+}
+function renderWallet(data){
+ document.getElementById("walletRevenue").textContent=money(data.totalLiveRevenue??data.totalRevenue??0);
+ document.getElementById("walletAvailable").textContent=money(data.availableBalance??0);
+ document.getElementById("walletPending").textContent=money(data.pendingWithdrawalAmount??data.pendingWithdrawalsAmount??0);
+ const bank=data.bankAccount||data.bank_account||null;
+ if(bank){
+  document.getElementById("bankDisplay").innerHTML=`
+   <div>Saved receiving account</div>
+   <strong>${escapeHTML(bank.bankName||bank.bank_name||"")}</strong><br>
+   <span>${escapeHTML(bank.accountNumber||bank.account_number||"")}</span><br>
+   <span>${escapeHTML(bank.accountName||bank.account_name||"")}</span>`;
+  document.getElementById("bankName").value=bank.bankName||bank.bank_name||"";
+  document.getElementById("accountNumber").value=bank.accountNumber||bank.account_number||"";
+  document.getElementById("accountName").value=bank.accountName||bank.account_name||"";
+ }else{
+  document.getElementById("bankDisplay").innerHTML="<div>Saved bank details</div><strong>No bank account saved</strong>";
+ }
+ const rows=data.withdrawals||data.history||[];
+ document.getElementById("withdrawalsTable").innerHTML=rows.length?rows.map(w=>{
+  const bankText=[w.bank_name,w.account_number,w.account_name].filter(Boolean).join(" · ")||"Saved account";
+  const status=String(w.status||"pending").toLowerCase();
+  const actions=status==="pending"?`
+   <button class="btn btn-success" onclick="markWithdrawal(${Number(w.id)},'paid')">Mark paid</button>
+   <button class="btn btn-danger" onclick="markWithdrawal(${Number(w.id)},'rejected')">Reject</button>`:`<span class="muted">—</span>`;
+  return `<tr>
+   <td>${w.requested_at?new Date(w.requested_at).toLocaleDateString():"—"}</td>
+   <td><strong>${money(w.amount)}</strong></td>
+   <td>${escapeHTML(bankText)}</td>
+   <td>${statusBadge(status)}</td>
+   <td>${escapeHTML(w.transfer_reference||"—")}</td>
+   <td><div class="actions">${actions}</div></td>
+  </tr>`;
+ }).join(""):`<tr><td colspan="6" class="empty">No withdrawal requests yet.</td></tr>`;
+}
+document.getElementById("bankForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const bankName=document.getElementById("bankName").value.trim();
+ const accountNumber=document.getElementById("accountNumber").value.trim();
+ const accountName=document.getElementById("accountName").value.trim();
+ if(!/^[0-9]{10}$/.test(accountNumber)){toast("Enter a valid 10-digit account number.");return}
+ try{
+  await api("/api/admin/wallet/bank-account",{method:"POST",body:JSON.stringify({bankName,accountNumber,accountName})});
+  toast("Bank account details saved.");
+  await loadWallet();
+ }catch(err){toast(err.message)}
+});
+document.getElementById("withdrawForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const amount=Number(document.getElementById("withdrawAmount").value);
+ if(!Number.isFinite(amount)||amount<=0){toast("Enter a valid withdrawal amount.");return}
+ if(!confirm("Submit a manual withdrawal request for "+money(amount)+"?"))return;
+ try{
+  await api("/api/admin/wallet/withdrawals",{method:"POST",body:JSON.stringify({amount})});
+  document.getElementById("withdrawAmount").value="";
+  toast("Withdrawal request submitted.");
+  await loadWallet();
+ }catch(err){toast(err.message)}
+});
+async function markWithdrawal(id,status){
+ let transferReference="";
+ let notes="";
+ if(status==="paid"){
+  transferReference=prompt("Enter the bank transfer reference. Do not mark paid until the transfer has actually been completed.")||"";
+  if(!transferReference.trim()){toast("A transfer reference is required.");return}
+ }else{
+  notes=prompt("Reason for rejecting this withdrawal (optional):")||"";
+  if(!confirm("Reject this withdrawal request?"))return;
+ }
+ try{
+  await api("/api/admin/wallet/withdrawals/"+id,{method:"PATCH",body:JSON.stringify({status,transferReference,notes})});
+  toast(status==="paid"?"Withdrawal marked as paid.":"Withdrawal rejected.");
+  await loadWallet();
+ }catch(err){toast(err.message)}
 }
 
 if(adminToken)enterDashboard();
 </script>
 </body>
 </html>
-
