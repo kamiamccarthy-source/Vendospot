@@ -24,6 +24,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const PRICE_PER_PRODUCT = 500;
 const MIN_PRODUCTS = 5;
 const MAX_PRODUCTS = 100;
+const MIN_CUSTOMER_PASSWORD_LENGTH = 6;
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is missing.');
@@ -62,6 +63,7 @@ app.use(helmet({
         "'unsafe-inline'",
         'https://js.paystack.co'
       ],
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
       imgSrc: ["'self'", 'data:', 'https:'],
       connectSrc: ["'self'", 'https://api.paystack.co'],
@@ -216,7 +218,7 @@ async function paystackRequest(endpoint, method = 'GET', body) {
   return result.data;
 }
 
-// Health check
+// HEALTH CHECK
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -234,9 +236,10 @@ app.post('/api/auth/register', async (req, res) => {
     const phone = clean(req.body.phone, 30);
     const password = String(req.body.password || '');
 
-    if (!name || !validEmail(email) || password.length < 8) {
+    if (!name || !validEmail(email) ||
+        password.length < MIN_CUSTOMER_PASSWORD_LENGTH) {
       return res.status(400).json({
-        error: 'Enter your name, a valid email and a password of at least 8 characters.'
+        error: 'Enter your name, a valid email and a password of at least 6 characters.'
       });
     }
 
@@ -382,13 +385,11 @@ app.post('/api/payments/initialize', authenticate, async (req, res) => {
       metadata: {
         seller_id: String(req.user.id),
         product_count: productCount,
-        custom_fields: [
-          {
-            display_name: 'Product advertising',
-            variable_name: 'product_advertising',
-            value: `${productCount} products`
-          }
-        ]
+        custom_fields: [{
+          display_name: 'Product advertising',
+          variable_name: 'product_advertising',
+          value: `${productCount} products`
+        }]
       }
     });
 
@@ -610,14 +611,9 @@ app.post('/api/admin/login', rateLimit({
   const password = String(req.body.password || '');
 
   const usernameMatches = username === ADMIN_USERNAME;
-  const passwordMatches = await bcrypt.compare(
-    password,
-    await bcrypt.hash(ADMIN_PASSWORD, 12)
-  ).catch(() => false);
-
-  // Also compare the configured password directly using a constant-time comparison.
   const expected = Buffer.from(ADMIN_PASSWORD);
   const supplied = Buffer.from(password);
+
   const passwordValid = expected.length === supplied.length &&
     crypto.timingSafeEqual(expected, supplied);
 
@@ -659,8 +655,8 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 app.get('/api/admin/products', requireAdmin, async (req, res) => {
   try {
     const status = clean(req.query.status, 30);
-
     const allowed = ['pending', 'approved', 'rejected'];
+
     const result = await pool.query(
       `SELECT p.*, u.name AS seller_name, u.email AS seller_email
        FROM products p
