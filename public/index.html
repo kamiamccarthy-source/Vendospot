@@ -8,24 +8,31 @@
 <meta name="description" content="VendoSpot — Discover products and promote your business.">
 <title>VendoSpot | Discover. Promote. Sell.</title>
 <style>
-:root{--navy:#101b35;--blue:#315efb;--blue2:#2449d8;--ink:#17213a;--muted:#778198;--bg:#f5f7fc;--line:#e8ecf4;--green:#159b69;--red:#d94b55}
+:root{
+  --navy:#101b35;--navy2:#172b55;--blue:#315efb;
+  --blue2:#2449d8;--ink:#17213a;--muted:#778198;
+  --bg:#f4f6fb;--line:#e8ecf4;--green:#159b69;
+  --red:#d94b55;--white:#fff;--shadow:0 12px 35px #15264b0b
+}
 *{box-sizing:border-box}
+html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input,select,textarea{font:inherit}
 button{cursor:pointer}
 a{text-decoration:none;color:inherit}
-.topbar{background:var(--navy);color:white;padding:13px 6%;display:flex;align-items:center;justify-content:space-between;gap:15px}
-.brand{display:flex;align-items:center;gap:10px;font-size:21px;font-weight:850}
-.brandmark{width:35px;height:35px;border-radius:11px;background:linear-gradient(135deg,#5c8bff,#315efb);display:grid;place-items:center}
+.topbar{background:var(--navy);color:white;padding:13px 6%;display:flex;align-items:center;justify-content:space-between;gap:15px;position:sticky;top:0;z-index:10}
+.brand{display:flex;align-items:center;gap:10px;font-size:21px;font-weight:850;letter-spacing:-.5px}
+.brandmark{width:37px;height:37px;border-radius:12px;background:linear-gradient(135deg,#75a1ff,#315efb);display:grid;place-items:center;box-shadow:0 5px 15px #315efb55}
 .toplinks,.top-actions{display:flex;align-items:center;gap:15px}
 .toplinks{font-size:13px;color:#d7def0}
-.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:750;font-size:13px}
-.btn-primary{background:var(--blue);color:white}
-.btn-primary:hover{background:var(--blue2)}
+.toplinks a:hover{color:white}
+.btn{border:0;border-radius:11px;padding:12px 17px;font-weight:750;font-size:13px;transition:.2s;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn-primary{background:var(--blue);color:white;box-shadow:0 5px 14px #315efb24}
+.btn-primary:hover{background:var(--blue2);transform:translateY(-1px)}
 .btn-light{background:white;color:var(--navy)}
 .btn-outline{background:white;border:1px solid var(--line);color:var(--ink)}
 .btn-danger{background:#fff0f1;color:var(--red)}
-button:disabled{opacity:.6;cursor:not-allowed}
+button:disabled{opacity:.6;cursor:not-allowed;transform:none!important}
 .hero{background:radial-gradient(circle at 80% 20%,#294b91 0,transparent 30%),linear-gradient(115deg,#101b35,#172b55);color:white;padding:75px 7%}
 .hero-inner{max-width:1150px;margin:auto;display:grid;grid-template-columns:1.2fr .8fr;align-items:center;gap:45px}
 .eyebrow{display:inline-block;background:#ffffff18;border:1px solid #ffffff30;border-radius:30px;padding:8px 13px;color:#dbe5ff;font-size:11px;font-weight:750}
@@ -33,35 +40,36 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .hero h1 span{color:#82a6ff}
 .hero p{color:#c4cee2;line-height:1.8;max-width:540px;font-size:15px}
 .hero-buttons{display:flex;gap:12px;margin-top:25px;flex-wrap:wrap}
-.hero-card{background:#ffffff12;border:1px solid #ffffff24;border-radius:22px;padding:24px}
+.hero-card{background:#ffffff12;border:1px solid #ffffff24;border-radius:22px;padding:24px;backdrop-filter:blur(8px)}
 .hero-product{background:white;color:var(--ink);border-radius:13px;padding:13px;display:flex;gap:13px;align-items:center;margin:11px 0}
 .product-art{width:55px;height:55px;border-radius:12px;background:#e7edff;display:grid;place-items:center;font-size:25px}
 .hero-product small{display:block;color:var(--muted);margin-top:5px}
 .section{max-width:1150px;margin:auto;padding:50px 22px}
 .section-head{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:23px}
-.section-head h2{font-size:27px;margin:0 0 7px}
+.section-head h2{font-size:27px;margin:0 0 7px;letter-spacing:-.6px}
 .section-head p{margin:0;color:var(--muted);font-size:13px}
 .searchbar{display:flex;gap:10px;margin:24px 0}
-input,select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;background:white;color:var(--ink);outline:none;font-size:13px}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:11px;padding:13px;background:white;color:var(--ink);outline:none;font-size:13px;min-width:0}
 input:focus,select:focus,textarea:focus{border-color:#7796ff;box-shadow:0 0 0 3px #315efb13}
 textarea{resize:vertical;min-height:85px}
 .categories{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:23px}
 .chip{border:1px solid var(--line);background:white;padding:9px 14px;border-radius:30px;font-size:11px;color:#59647b}
 .chip.active{background:#eaf0ff;border-color:#cbd7ff;color:var(--blue)}
 .products{display:grid;grid-template-columns:repeat(4,1fr);gap:17px}
-.product-card{background:white;border:1px solid var(--line);border-radius:15px;overflow:hidden}
+.product-card{background:white;border:1px solid var(--line);border-radius:17px;overflow:hidden;box-shadow:var(--shadow);transition:.2s}
+.product-card:hover{transform:translateY(-3px);box-shadow:0 15px 35px #15264b13}
 .product-image{height:165px;background:#eaf0ff;display:grid;place-items:center;overflow:hidden}
 .product-image img{width:100%;height:100%;object-fit:cover}
 .product-info{padding:15px}
-.product-category{font-size:10px;text-transform:uppercase;color:var(--blue);font-weight:800}
+.product-category{font-size:10px;text-transform:uppercase;color:var(--blue);font-weight:800;letter-spacing:.5px}
 .product-info h3{font-size:14px;margin:8px 0}
-.product-description{font-size:11px;color:var(--muted);line-height:1.5;min-height:32px}
+.product-description{font-size:11px;color:var(--muted);line-height:1.5;min-height:32px;overflow-wrap:anywhere}
 .product-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:13px}
 .price{font-size:15px;font-weight:850}
 .location{font-size:10px;color:var(--muted);margin-top:9px}
 .empty{grid-column:1/-1;text-align:center;background:white;padding:40px;border:1px dashed #dce2ef;border-radius:15px;color:var(--muted);font-size:13px}
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:17px}
-.step,.panel,.sidebar{background:white;padding:22px;border:1px solid var(--line);border-radius:15px}
+.step,.panel,.sidebar{background:white;padding:22px;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
 .step h3{font-size:15px}
 .step p{font-size:12px;line-height:1.7;color:var(--muted)}
 .seller-banner{max-width:1100px;margin:5px auto 55px;padding:32px;background:linear-gradient(110deg,#315efb,#2445c9);border-radius:20px;color:white;display:flex;align-items:center;justify-content:space-between;gap:20px}
@@ -70,14 +78,14 @@ footer{background:var(--navy);color:#c4cee2;padding:30px 6%;font-size:12px}
 .footer-inner{max-width:1150px;margin:auto;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 .modal{position:fixed;inset:0;background:#071126bb;z-index:20;display:none;align-items:center;justify-content:center;padding:15px}
 .modal.show{display:flex}
-.modal-box{width:100%;max-width:480px;background:white;border-radius:18px;padding:24px;max-height:92vh;overflow:auto}
+.modal-box{width:100%;max-width:480px;background:white;border-radius:20px;padding:24px;max-height:92vh;overflow:auto;box-shadow:0 25px 70px #0003}
 .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:17px}
 .modal-head h2{font-size:21px;margin:0}
-.close{border:0;background:#f1f3f8;width:33px;height:33px;border-radius:9px;font-size:20px}
+.close{border:0;background:#f1f3f8;width:35px;height:35px;border-radius:10px;font-size:20px}
 .field{margin:13px 0}
 .field label{display:block;font-size:11px;font-weight:750;color:#58647a;margin-bottom:7px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.form-message{padding:11px;border-radius:9px;font-size:12px;display:none;margin:12px 0}
+.form-message{padding:11px;border-radius:9px;font-size:12px;display:none;margin:12px 0;line-height:1.6}
 .form-message.error{display:block;background:#fff0f1;color:#b52f3a}
 .form-message.success{display:block;background:#eafaf2;color:#13784f}
 .modal-switch{text-align:center;color:var(--muted);font-size:12px;margin-top:16px}
@@ -85,15 +93,16 @@ footer{background:var(--navy);color:#c4cee2;padding:30px 6%;font-size:12px}
 .dashboard{display:none;max-width:1150px;margin:auto;padding:35px 22px 60px}
 .dashboard.show{display:block}
 .dash-heading{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-bottom:23px}
-.dash-heading h1{font-size:27px;margin:0 0 5px}
+.dash-heading h1{font-size:27px;margin:0 0 5px;letter-spacing:-.7px}
 .dash-heading p{color:var(--muted);font-size:12px}
 .dash-layout{display:grid;grid-template-columns:210px 1fr;gap:18px}
-.side-link{width:100%;border:0;background:transparent;text-align:left;padding:12px;border-radius:9px;color:#667188;font-size:12px;font-weight:700;margin:3px 0}
+.sidebar{height:max-content;position:sticky;top:80px}
+.side-link{width:100%;border:0;background:transparent;text-align:left;padding:13px;border-radius:10px;color:#667188;font-size:12px;font-weight:700;margin:3px 0}
 .side-link.active{background:#edf2ff;color:var(--blue)}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
-.stat{padding:16px;border:1px solid var(--line);border-radius:12px;background:white}
+.stat{padding:19px;border:1px solid var(--line);border-radius:15px;background:white;box-shadow:var(--shadow)}
 .stat small{font-size:10px;color:var(--muted)}
-.stat strong{display:block;font-size:23px;margin-top:8px}
+.stat strong{display:block;font-size:25px;margin-top:8px;letter-spacing:-.5px}
 .panel h3{font-size:15px;margin:0 0 14px}
 .table-wrap{overflow:auto}
 table{border-collapse:collapse;width:100%;min-width:430px}
@@ -102,12 +111,53 @@ th{color:var(--muted)}
 .status{display:inline-block;padding:6px 9px;border-radius:20px;font-size:10px;font-weight:750;background:#fff5dc;color:#966b0a}
 .status.approved{background:#e8f8ef;color:#138050}
 .status.rejected{background:#fff0f1;color:#c13d48}
-.pricing{background:#f1f5ff;padding:14px;border-radius:11px;margin:15px 0;font-size:12px;line-height:1.9}
+.pricing{background:#f1f5ff;padding:15px;border-radius:12px;margin:15px 0;font-size:12px;line-height:1.9}
 .pricing strong{color:var(--blue)}
 .hidden{display:none!important}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#17213a;color:white;padding:12px 18px;border-radius:10px;font-size:12px;z-index:50;display:none;max-width:90%;text-align:center}
-@media(max-width:850px){.products{grid-template-columns:repeat(2,1fr)}.hero-inner{grid-template-columns:1fr}.toplinks{display:none}}
-@media(max-width:600px){.topbar{padding:12px 4%}.brand{font-size:18px}.top-actions{gap:6px}.top-actions .btn{padding:9px;font-size:11px}.hero{padding:48px 6%}.section{padding:38px 15px}.products{gap:10px}.product-image{height:130px}.product-info{padding:11px}.product-bottom{align-items:flex-start;flex-direction:column}.steps{grid-template-columns:1fr}.seller-banner{margin:0 15px 38px;padding:24px;align-items:flex-start;flex-direction:column}.dash-layout{grid-template-columns:1fr}.sidebar{display:flex;overflow:auto;gap:5px;padding:8px}.side-link{white-space:nowrap;width:auto}.stats{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.modal-box{padding:18px}}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#17213a;color:white;padding:12px 18px;border-radius:10px;font-size:12px;z-index:50;display:none;max-width:90%;text-align:center;box-shadow:0 8px 25px #0003}
+.photo-upload{border:1.5px dashed #b8c8ed;background:#f7f9ff;border-radius:13px;padding:15px;text-align:center}
+.photo-upload input{border:0;background:transparent;padding:8px;font-size:12px}
+.photo-upload small{display:block;color:var(--muted);font-size:10px;line-height:1.6}
+.photo-preview{width:100%;max-height:190px;object-fit:cover;border-radius:11px;margin-top:10px;display:none}
+.photo-preview.visible{display:block}
+.upload-status{font-size:11px;color:var(--muted);margin-top:7px;min-height:16px}
+.product-form-card{margin-top:13px;padding:18px}
+.product-form-card h3{display:flex;align-items:center;justify-content:space-between}
+.product-form-card h3 span{font-size:10px;color:var(--muted);font-weight:600}
+.dashboard-intro{padding:22px;background:linear-gradient(115deg,#172b55,#315efb);color:white;border-radius:16px;margin-bottom:16px}
+.dashboard-intro h2{font-size:18px;margin:0 0 7px}
+.dashboard-intro p{font-size:12px;color:#dce6ff;line-height:1.7;margin:0}
+@media(max-width:850px){
+ .products{grid-template-columns:repeat(2,1fr)}
+ .hero-inner{grid-template-columns:1fr}
+ .toplinks{display:none}
+}
+@media(max-width:600px){
+ .topbar{padding:11px 4%}
+ .brand{font-size:18px}
+ .top-actions{gap:6px}
+ .top-actions .btn{padding:9px;font-size:11px}
+ .hero{padding:48px 6%}
+ .hero h1{letter-spacing:-1.4px}
+ .section{padding:38px 15px}
+ .products{gap:10px}
+ .product-image{height:130px}
+ .product-info{padding:11px}
+ .product-bottom{align-items:flex-start;flex-direction:column}
+ .steps{grid-template-columns:1fr}
+ .seller-banner{margin:0 15px 38px;padding:24px;align-items:flex-start;flex-direction:column}
+ .dash-layout{grid-template-columns:1fr}
+ .sidebar{display:flex;overflow:auto;gap:5px;padding:8px;position:static}
+ .side-link{white-space:nowrap;width:auto;margin:0}
+ .stats{grid-template-columns:1fr 1fr}
+ .form-grid{grid-template-columns:1fr}
+ .modal-box{padding:18px}
+ .dashboard{padding:25px 13px 45px}
+ .dash-heading h1{font-size:23px}
+ .product-form-card{padding:13px}
+ .searchbar{gap:6px}
+ .searchbar .btn{padding:10px}
+}
 </style>
 </head>
 <body>
@@ -115,7 +165,9 @@ th{color:var(--muted)}
 <header class="topbar">
 <a class="brand" href="#" id="homeLink"><span class="brandmark">V</span> VendoSpot</a>
 <nav class="toplinks">
-<a href="#marketplace">Marketplace</a><a href="#how-it-works">How it works</a><a href="#sell">For sellers</a>
+<a href="#marketplace">Marketplace</a>
+<a href="#how-it-works">How it works</a>
+<a href="#sell">For sellers</a>
 </nav>
 <div class="top-actions" id="guestActions">
 <button class="btn btn-light" data-action="login">Log in</button>
@@ -150,8 +202,14 @@ th{color:var(--muted)}
 </section>
 
 <section class="section" id="marketplace">
-<div class="section-head"><div><h2>Explore products</h2><p>Find products and connect with sellers.</p></div><button class="btn btn-outline" data-action="refresh">↻ Refresh</button></div>
-<div class="searchbar"><input id="searchInput" placeholder="Search products, categories or sellers..."><button class="btn btn-primary" data-action="search">Search</button></div>
+<div class="section-head">
+<div><h2>Explore products</h2><p>Find products and connect with sellers.</p></div>
+<button class="btn btn-outline" data-action="refresh">↻ Refresh</button>
+</div>
+<div class="searchbar">
+<input id="searchInput" placeholder="Search products, categories or sellers...">
+<button class="btn btn-primary" data-action="search">Search</button>
+</div>
 <div class="categories">
 <button class="chip active" data-category="All">All products</button>
 <button class="chip" data-category="Fashion">Fashion</button>
@@ -179,7 +237,10 @@ th{color:var(--muted)}
 </main>
 
 <section class="dashboard" id="dashboardView">
-<div class="dash-heading"><div><h1>Seller dashboard</h1><p>Manage your VendoSpot advertising and products.</p></div><button class="btn btn-primary" data-panel="newListing">＋ Advertise products</button></div>
+<div class="dash-heading">
+<div><h1>Seller dashboard</h1><p>Manage your VendoSpot advertising and products.</p></div>
+<button class="btn btn-primary" data-panel="newListing">＋ Advertise products</button>
+</div>
 <div class="dash-layout">
 <aside class="sidebar">
 <button class="side-link active" data-panel="overview">▦ Overview</button>
@@ -189,18 +250,26 @@ th{color:var(--muted)}
 </aside>
 <div>
 <div class="dash-panel" id="overviewPanel">
+<div class="dashboard-intro">
+<h2>Welcome to VendoSpot</h2>
+<p>Your business deserves to be discovered. Manage your product advertising, track listing reviews and connect with customers from one place.</p>
+</div>
 <div class="stats">
 <div class="stat"><small>Total products</small><strong id="statTotal">0</strong></div>
 <div class="stat"><small>Approved</small><strong id="statApproved">0</strong></div>
 <div class="stat"><small>Pending review</small><strong id="statPending">0</strong></div>
 </div>
-<div class="panel"><h3>Welcome to your seller account</h3><p style="font-size:12px;color:#778198;line-height:1.8">Each product costs ₦500. You must advertise at least five products per order. Products are reviewed before appearing publicly.</p><button class="btn btn-primary" data-panel="newListing">Create your first order →</button></div>
+<div class="panel">
+<h3>Your seller account</h3>
+<p style="font-size:12px;color:#778198;line-height:1.8">Each product costs ₦500. You must advertise at least five products per order. Add product photos directly from your phone. Products are reviewed before appearing publicly.</p>
+<button class="btn btn-primary" data-panel="newListing">Create a product order →</button>
+</div>
 </div>
 
 <div class="dash-panel hidden" id="newListingPanel">
 <div class="panel">
 <h3>Advertise your products</h3>
-<p style="font-size:12px;color:#778198;line-height:1.7">Choose how many products you want to advertise. Pay securely with Paystack, then submit your product details.</p>
+<p style="font-size:12px;color:#778198;line-height:1.7">Choose how many products you want to advertise. Pay securely with Paystack, then add your product details and photos.</p>
 <div class="field"><label>Number of products (minimum 5)</label><input type="number" id="productCount" min="5" max="100" step="1" value="5"></div>
 <div class="pricing">Price per product: <strong>₦500</strong><br>Minimum order: <strong>5 products</strong><br>Total payment: <strong id="orderTotal">₦2,500</strong></div>
 <div id="paymentMessage" class="form-message"></div>
@@ -210,6 +279,7 @@ th{color:var(--muted)}
 <div class="panel hidden" id="productEntryPanel" style="margin-top:15px">
 <h3>Submit your paid product order</h3>
 <p id="paidOrderInfo" style="font-size:12px;color:#778198"></p>
+<p style="font-size:11px;color:#778198">Choose a photo from your phone for each product. Photos are compressed before upload to save data.</p>
 <div id="productForms"></div>
 <button class="btn btn-primary" id="submitProductsButton" style="width:100%;margin-top:15px" data-action="submit-products">Submit products for review</button>
 <div id="listingMessage" class="form-message"></div>
@@ -217,7 +287,12 @@ th{color:var(--muted)}
 </div>
 
 <div class="dash-panel hidden" id="myListingsPanel">
-<div class="panel"><h3>My advertised products</h3><div class="table-wrap"><table><thead><tr><th>Product</th><th>Price</th><th>Status</th></tr></thead><tbody id="myListingsBody"><tr><td colspan="3">No products loaded.</td></tr></tbody></table></div></div>
+<div class="panel">
+<h3>My advertised products</h3>
+<div class="table-wrap">
+<table><thead><tr><th>Product</th><th>Price</th><th>Status</th></tr></thead><tbody id="myListingsBody"><tr><td colspan="3">No products loaded.</td></tr></tbody></table>
+</div>
+</div>
 </div>
 
 <div class="dash-panel hidden" id="accountPanel">
@@ -227,7 +302,13 @@ th{color:var(--muted)}
 </div>
 </section>
 
-<footer><div class="footer-inner"><div><strong>VendoSpot</strong><p>Discover. Promote. Sell.</p></div><div>© <span id="year"></span> VendoSpot. All rights reserved.</div><div>Simple. Secure. Transparent.</div></div></footer>
+<footer>
+<div class="footer-inner">
+<div><strong>VendoSpot</strong><p>Discover. Promote. Sell.</p></div>
+<div>© <span id="year"></span> VendoSpot. All rights reserved.</div>
+<div>Simple. Secure. Transparent.</div>
+</div>
+</footer>
 
 <div class="modal" id="authModal">
 <div class="modal-box">
@@ -254,6 +335,8 @@ th{color:var(--muted)}
 
 const API = "";
 const PRICE_PER_PRODUCT = 500;
+const MAX_PHOTO_BYTES = 1024 * 1024;
+
 let token = localStorage.getItem("vendospot_token") || "";
 let currentUser = null;
 let products = [];
@@ -578,34 +661,191 @@ async function startPayment() {
   }
 }
 
+/* Compress a phone photo into a small JPEG before uploading it. */
+async function compressPhoto(file) {
+  if (!file || !file.type.startsWith("image/")) {
+    throw new Error("Please choose an image file.");
+  }
+
+  if (file.size > 15 * 1024 * 1024) {
+    throw new Error("This original photo is too large. Choose a photo under 15MB.");
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = new Image();
+
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("Could not open this photo."));
+      image.src = objectUrl;
+    });
+
+    const maxDimension = 1280;
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    const canvas = document.createElement("canvas");
+
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Photo processing is not supported by this browser.");
+
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    let quality = 0.82;
+    let dataUrl = canvas.toDataURL("image/jpeg", quality);
+
+    while (dataUrl.length * 0.75 > MAX_PHOTO_BYTES && quality > 0.35) {
+      quality -= 0.10;
+      dataUrl = canvas.toDataURL("image/jpeg", quality);
+    }
+
+    if (dataUrl.length * 0.75 > MAX_PHOTO_BYTES) {
+      throw new Error("This photo could not be compressed enough. Please choose another photo.");
+    }
+
+    return dataUrl;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+/* Save the compressed photo in PostgreSQL through the authenticated API. */
+async function uploadProductPhoto(file, statusElement) {
+  statusElement.textContent = "Compressing photo...";
+
+  const imageData = await compressPhoto(file);
+
+  statusElement.textContent = "Uploading photo securely...";
+
+  const result = await api("/api/product-images", {
+    method: "POST",
+    body: JSON.stringify({imageData})
+  });
+
+  const imageUrl = result.image_url || result.imageUrl;
+
+  if (!imageUrl) {
+    throw new Error("The server did not return the saved photo address.");
+  }
+
+  statusElement.textContent = "Photo uploaded successfully.";
+  return imageUrl;
+}
+
 function buildProductForms(count) {
   const container = $("productForms");
   container.innerHTML = "";
 
   for (let i = 0; i < count; i++) {
     const item = document.createElement("div");
-    item.className = "panel";
-    item.style.marginTop = "12px";
+    item.className = "panel product-form-card";
+    item.dataset.productIndex = String(i);
 
     item.innerHTML = `
-      <h3>Product ${i + 1}</h3>
-      <div class="field"><label>Product name</label><input data-field="title" placeholder="Product name" required></div>
-      <div class="form-grid">
-        <div class="field"><label>Price (₦)</label><input data-field="price" type="number" min="0" placeholder="e.g. 15000" required></div>
-        <div class="field"><label>Category</label><select data-field="category"><option>Fashion</option><option>Electronics</option><option>Beauty</option><option>Home</option><option>Other</option></select></div>
+      <h3>Product ${i + 1}<span>Listing details</span></h3>
+
+      <div class="field">
+        <label>Product name *</label>
+        <input data-field="title" placeholder="Product name" required maxlength="200">
       </div>
-      <div class="field"><label>Product image URL</label><input data-field="image_url" type="url" placeholder="https://example.com/image.jpg"></div>
-      <div class="field"><label>Product description</label><textarea data-field="description" placeholder="Describe your product"></textarea></div>
+
       <div class="form-grid">
-        <div class="field"><label>Location</label><input data-field="location" placeholder="City, State"></div>
-        <div class="field"><label>WhatsApp number</label><input data-field="whatsapp" placeholder="08012345678"></div>
+        <div class="field">
+          <label>Price (₦) *</label>
+          <input data-field="price" type="number" min="0" step="0.01" placeholder="e.g. 15000" required>
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select data-field="category">
+            <option>Fashion</option>
+            <option>Electronics</option>
+            <option>Beauty</option>
+            <option>Home</option>
+            <option>Other</option>
+          </select>
+        </div>
       </div>
-      <div class="field"><label>Product website or order link (optional)</label><input data-field="product_url" type="url" placeholder="https://example.com/product"></div>
+
+      <div class="field">
+        <label>Product photo</label>
+        <div class="photo-upload">
+          <strong style="font-size:12px">📷 Add a product photo</strong>
+          <small>Select a photo from your iPhone gallery or camera</small>
+          <input data-photo type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif">
+          <img class="photo-preview" data-preview alt="Product photo preview">
+          <div class="upload-status" data-upload-status>Optional — you can also use an image URL below.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Or product image URL (optional)</label>
+        <input data-field="image_url" type="url" placeholder="https://example.com/image.jpg">
+      </div>
+
+      <div class="field">
+        <label>Product description</label>
+        <textarea data-field="description" placeholder="Describe your product" maxlength="5000"></textarea>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Location</label>
+          <input data-field="location" placeholder="City, State">
+        </div>
+        <div class="field">
+          <label>WhatsApp number</label>
+          <input data-field="whatsapp" placeholder="08012345678">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Product website or order link (optional)</label>
+        <input data-field="product_url" type="url" placeholder="https://example.com/product">
+      </div>
     `;
 
     container.appendChild(item);
   }
 }
+
+/* Show a preview immediately when a seller chooses a photo. */
+$("productForms").addEventListener("change", event => {
+  const input = event.target.closest("[data-photo]");
+  if (!input) return;
+
+  const card = input.closest(".product-form-card");
+  const preview = card.querySelector("[data-preview]");
+  const status = card.querySelector("[data-upload-status]");
+  const file = input.files && input.files[0];
+
+  if (!file) {
+    preview.removeAttribute("src");
+    preview.classList.remove("visible");
+    status.textContent = "Optional — you can also use an image URL below.";
+    return;
+  }
+
+  if (!file.type.startsWith("image/")) {
+    input.value = "";
+    status.textContent = "Please select an image.";
+    toast("Please select an image file.");
+    return;
+  }
+
+  const oldUrl = preview.dataset.objectUrl;
+  if (oldUrl) URL.revokeObjectURL(oldUrl);
+
+  const objectUrl = URL.createObjectURL(file);
+  preview.dataset.objectUrl = objectUrl;
+  preview.src = objectUrl;
+  preview.classList.add("visible");
+  status.textContent = file.name + " selected. It will be compressed when you submit.";
+});
 
 async function submitProducts() {
   if (!paidReference || !paidProductCount) {
@@ -613,33 +853,50 @@ async function submitProducts() {
     return;
   }
 
-  const cards = [...document.querySelectorAll("#productForms .panel")];
+  const cards = [...document.querySelectorAll("#productForms .product-form-card")];
 
-  const items = cards.map(card => {
-    const item = {};
-    card.querySelectorAll("[data-field]").forEach(input => {
-      item[input.dataset.field] = input.value.trim();
-    });
-    item.price = item.price === "" ? "" : Number(item.price);
-    return item;
-  });
-
-  if (items.some(item =>
-    !item.title ||
-    item.price === "" ||
-    !Number.isFinite(item.price) ||
-    item.price < 0
-  )) {
-    showMessage("listingMessage", "Complete every product name and enter a valid price.");
+  if (cards.length !== paidProductCount) {
+    showMessage("listingMessage", "The product form does not match your paid order. Please reload and try again.");
     return;
   }
 
   const button = $("submitProductsButton");
   button.disabled = true;
-  button.textContent = "Submitting products...";
+  button.textContent = "Preparing your products...";
   clearMessage("listingMessage");
 
   try {
+    const items = [];
+
+    for (let index = 0; index < cards.length; index++) {
+      const card = cards[index];
+      const item = {};
+
+      card.querySelectorAll("[data-field]").forEach(input => {
+        item[input.dataset.field] = input.value.trim();
+      });
+
+      item.price = item.price === "" ? "" : Number(item.price);
+
+      if (!item.title || item.price === "" ||
+          !Number.isFinite(item.price) || item.price < 0) {
+        throw new Error("Complete every product name and enter a valid price. Check Product " + (index + 1) + ".");
+      }
+
+      const photoInput = card.querySelector("[data-photo]");
+      const photoStatus = card.querySelector("[data-upload-status]");
+      const photoFile = photoInput.files && photoInput.files[0];
+
+      if (photoFile) {
+        button.textContent = "Uploading photo " + (index + 1) + " of " + cards.length + "...";
+        item.image_url = await uploadProductPhoto(photoFile, photoStatus);
+      }
+
+      items.push(item);
+    }
+
+    button.textContent = "Submitting products...";
+
     await api("/api/listings", {
       method: "POST",
       body: JSON.stringify({reference:paidReference, products:items})
@@ -718,7 +975,7 @@ async function handlePaymentReturn() {
       calculateTotal();
 
       $("paidOrderInfo").textContent =
-        "Payment confirmed. Enter details for your " + paidProductCount + " products.";
+        "Payment confirmed. Enter details and photos for your " + paidProductCount + " products.";
 
       buildProductForms(paidProductCount);
       $("productEntryPanel").classList.remove("hidden");
@@ -737,7 +994,6 @@ async function handlePaymentReturn() {
   }
 }
 
-// All interactive controls are wired here rather than using inline onclick attributes.
 document.addEventListener("click", async event => {
   const action = event.target.closest("[data-action]");
   const panelButton = event.target.closest("[data-panel]");
@@ -761,10 +1017,7 @@ document.addEventListener("click", async event => {
   }
 
   if (panelButton) {
-    if (panelButton.dataset.panel === "newListing" ||
-        panelButton.dataset.panel === "overview" ||
-        panelButton.dataset.panel === "myListings" ||
-        panelButton.dataset.panel === "account") {
+    if (["newListing","overview","myListings","account"].includes(panelButton.dataset.panel)) {
       showPanel(panelButton.dataset.panel);
     }
   }
