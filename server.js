@@ -25,6 +25,7 @@ const PRICE_PER_PRODUCT = 500;
 const MIN_PRODUCTS = 5;
 const MAX_PRODUCTS = 100;
 const MIN_CUSTOMER_PASSWORD_LENGTH = 6;
+const MAX_IMAGE_BYTES = 1024 * 1024;
 
 const PAYMENT_MODE = PAYSTACK_SECRET_KEY?.startsWith('sk_live_')
   ? 'live'
@@ -189,11 +190,25 @@ async function initializeDatabase() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
 
+    ALTER TABLE products
+      ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+    CREATE TABLE IF NOT EXISTS product_images (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      mime_type VARCHAR(30) NOT NULL,
+      image_data BYTEA NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
     CREATE INDEX IF NOT EXISTS products_status_idx ON products(status);
     CREATE INDEX IF NOT EXISTS products_user_idx ON products(user_id);
     CREATE INDEX IF NOT EXISTS payments_user_idx ON payments(user_id);
     CREATE INDEX IF NOT EXISTS payments_mode_status_idx
       ON payments(payment_mode, status);
+    CREATE INDEX IF NOT EXISTS product_images_user_idx
+      ON product_images(user_id);
 
     CREATE TABLE IF NOT EXISTS admin_wallet_settings (
       id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -272,6 +287,95 @@ app.get('/api/health', async (req, res) => {
     res.json({ status: 'ok', service: 'VendoSpot' });
   } catch {
     res.status(503).json({ status: 'database_unavailable' });
+  }
+});
+
+// UPLOAD A PRODUCT PHOTO
+// The seller's browser should resize/compress the selected photo
+// before sending it here as a base64 data URL.
+app.post('/api/product-images', authenticate, async (req, res) => {
+  try {
+    const dataUrl = String(req.body.imageData || req.body.dataUrl || '');
+
+    const match = dataUrl.match(
+      /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/
+    );
+
+    if (!match) {
+      return res.status(400).json({
+        error: 'Upload a valid JPEG, PNG or WebP image.'
+      });
+    }
+
+    const mimeType = match[1];
+    const base64 = match[2];
+    const imageBuffer = Buffer.from(base64, 'base64');
+
+    if (
+      imageBuffer.length === 0 ||
+      imageBuffer.length > MAX_IMAGE_BYTES ||
+      imageBuffer.toString('base64') !== base64
+    ) {
+      return res.status(400).json({
+        error: 'Image is too large or invalid. Please choose a compressed image under 1MB.'
+      });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO product_images
+       (user_id, mime_type, image_data, size_bytes)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [req.user.id, mimeType, imageBuffer, imageBuffer.length]
+    );
+
+    const imageId = result.rows[0].id;
+
+    res.status(201).json({
+      success: true,
+      image_url: `/api/product-images/${imageId}`,
+      imageUrl: `/api/product-images/${imageId}`
+    });
+  } catch (error) {
+    console.error('Product image upload error:', error.message);
+    res.status(500).json({
+      error: 'Could not save product photo. Please try again.'
+    });
+  }
+});
+
+// SERVE A SAVED PRODUCT PHOTO
+app.get('/api/product-images/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    if (!/^\d+$/.test(id)) {
+      return res.status(400).end();
+    }
+
+    const result = await pool.query(
+      `SELECT mime_type, image_data
+       FROM product_images
+       WHERE id = $1`,
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).end();
+    }
+
+    const photo = result.rows[0];
+
+    res.set({
+      'Content-Type': photo.mime_type,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff'
+    });
+
+    res.send(photo.image_data);
+  } catch (error) {
+    console.error('Product image retrieval error:', error.message);
+    res.status(500).end();
   }
 });
 
@@ -573,7 +677,7 @@ app.post('/api/listings', authenticate, async (req, res) => {
       const title = clean(item.title, 200);
       const description = clean(item.description, 5000);
       const category = clean(item.category, 100);
-      const imageUrl = clean(item.image_url, 2000);
+      const imageUrl = clean(item.image_url || item.imageUrl, 2000);
       const productUrl = clean(item.product_url, 2000);
       const whatsapp = clean(item.whatsapp, 40);
       const location = clean(item.location, 150);
@@ -590,9 +694,29 @@ app.post('/api/listings', authenticate, async (req, res) => {
         throw new Error('Enter a valid product price.');
       }
 
-      for (const url of [imageUrl, productUrl]) {
-        if (url && !/^https?:\/\//i.test(url)) {
-          throw new Error('Product image and product links must use valid HTTP or HTTPS URLs.');
+      // Accept uploaded VendoSpot image paths or ordinary HTTP/HTTPS URLs.
+      const validImagePath = /^\/api\/product-images\/\d+$/.test(imageUrl);
+      const validImageUrl = !imageUrl || /^https?:\/\//i.test(imageUrl);
+
+      if (!validImagePath && !validImageUrl) {
+        throw new Error('Product image must be an uploaded VendoSpot photo or a valid HTTP/HTTPS URL.');
+      }
+
+      if (productUrl && !/^https?:\/\//i.test(productUrl)) {
+        throw new Error('Product links must use valid HTTP or HTTPS URLs.');
+      }
+
+      // If a VendoSpot image is used, make sure it belongs to this seller.
+      if (validImagePath) {
+        const imageId = imageUrl.split('/').pop();
+
+        const imageResult = await client.query(
+          'SELECT id FROM product_images WHERE id = $1 AND user_id = $2',
+          [imageId, req.user.id]
+        );
+
+        if (!imageResult.rows.length) {
+          throw new Error('One of your uploaded product photos could not be found. Please upload it again.');
         }
       }
 
@@ -1079,6 +1203,13 @@ app.use('/api', (req, res) => {
 
 app.use((error, req, res, next) => {
   console.error('Server error:', error.message);
+
+  if (error.type === 'entity.too.large') {
+    return res.status(413).json({
+      error: 'Request is too large. Please use a smaller, compressed product photo.'
+    });
+  }
+
   res.status(500).json({
     error: 'An unexpected server error occurred.'
   });
