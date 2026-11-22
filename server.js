@@ -26,6 +26,12 @@ const MIN_PRODUCTS = 5;
 const MAX_PRODUCTS = 100;
 const MIN_CUSTOMER_PASSWORD_LENGTH = 6;
 
+const PAYMENT_MODE = PAYSTACK_SECRET_KEY?.startsWith('sk_live_')
+  ? 'live'
+  : PAYSTACK_SECRET_KEY?.startsWith('sk_test_')
+    ? 'test'
+    : 'unknown';
+
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is missing.');
 }
@@ -58,11 +64,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        'https://js.paystack.co'
-      ],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://js.paystack.co'],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
       imgSrc: ["'self'", 'data:', 'https:'],
@@ -115,7 +117,9 @@ function authenticate(req, res, next) {
     req.user = decoded;
     next();
   } catch {
-    return res.status(401).json({ error: 'Your session has expired. Please log in again.' });
+    return res.status(401).json({
+      error: 'Your session has expired. Please log in again.'
+    });
   }
 }
 
@@ -165,6 +169,9 @@ async function initializeDatabase() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
 
+    ALTER TABLE payments
+      ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(20) NOT NULL DEFAULT 'unknown';
+
     CREATE TABLE IF NOT EXISTS products (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id),
@@ -182,14 +189,35 @@ async function initializeDatabase() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
 
-    CREATE INDEX IF NOT EXISTS products_status_idx
-      ON products(status);
+    CREATE INDEX IF NOT EXISTS products_status_idx ON products(status);
+    CREATE INDEX IF NOT EXISTS products_user_idx ON products(user_id);
+    CREATE INDEX IF NOT EXISTS payments_user_idx ON payments(user_id);
+    CREATE INDEX IF NOT EXISTS payments_mode_status_idx
+      ON payments(payment_mode, status);
 
-    CREATE INDEX IF NOT EXISTS products_user_idx
-      ON products(user_id);
+    CREATE TABLE IF NOT EXISTS admin_wallet_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      bank_name VARCHAR(120) NOT NULL,
+      account_number VARCHAR(10) NOT NULL,
+      account_name VARCHAR(150) NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
 
-    CREATE INDEX IF NOT EXISTS payments_user_idx
-      ON payments(user_id);
+    CREATE TABLE IF NOT EXISTS admin_withdrawals (
+      id BIGSERIAL PRIMARY KEY,
+      amount_kobo BIGINT NOT NULL CHECK (amount_kobo > 0),
+      bank_name VARCHAR(120) NOT NULL,
+      account_number VARCHAR(10) NOT NULL,
+      account_name VARCHAR(150) NOT NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'pending',
+      transfer_reference VARCHAR(200),
+      notes TEXT,
+      requested_at TIMESTAMPTZ DEFAULT NOW(),
+      processed_at TIMESTAMPTZ
+    );
+
+    CREATE INDEX IF NOT EXISTS admin_withdrawals_status_idx
+      ON admin_withdrawals(status);
   `);
 
   console.log('VendoSpot database initialized.');
@@ -216,6 +244,17 @@ async function paystackRequest(endpoint, method = 'GET', body) {
   }
 
   return result.data;
+}
+
+function walletAmounts(row) {
+  const revenueKobo = Number(row.revenue_kobo || 0);
+  const pendingKobo = Number(row.pending_kobo || 0);
+
+  return {
+    totalLiveRevenue: revenueKobo / 100,
+    pendingWithdrawalAmount: pendingKobo / 100,
+    availableBalance: Math.max(0, revenueKobo - pendingKobo) / 100
+  };
 }
 
 // HEALTH CHECK
@@ -262,7 +301,9 @@ app.post('/api/auth/register', async (req, res) => {
     res.status(201).json({ token, user });
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(409).json({ error: 'An account with this email already exists.' });
+      return res.status(409).json({
+        error: 'An account with this email already exists.'
+      });
     }
 
     console.error('Registration error:', error.message);
@@ -288,7 +329,6 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const token = createToken({ id: String(user.id), role: 'seller' });
-
     delete user.password_hash;
 
     res.json({ token, user });
@@ -371,9 +411,9 @@ app.post('/api/payments/initialize', authenticate, async (req, res) => {
 
     await pool.query(
       `INSERT INTO payments
-       (user_id, reference, amount_kobo, product_count, email)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [req.user.id, reference, amountKobo, productCount, email]
+       (user_id, reference, amount_kobo, product_count, email, payment_mode)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [req.user.id, reference, amountKobo, productCount, email, PAYMENT_MODE]
     );
 
     const payment = await paystackRequest('/transaction/initialize', 'POST', {
@@ -401,7 +441,9 @@ app.post('/api/payments/initialize', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Payment initialization error:', error.message);
-    res.status(500).json({ error: error.message || 'Could not initialize payment.' });
+    res.status(500).json({
+      error: error.message || 'Could not initialize payment.'
+    });
   }
 });
 
@@ -489,7 +531,9 @@ app.post('/api/listings', authenticate, async (req, res) => {
     const products = req.body.products;
 
     if (!reference || !Array.isArray(products)) {
-      return res.status(400).json({ error: 'Payment reference and products are required.' });
+      return res.status(400).json({
+        error: 'Payment reference and products are required.'
+      });
     }
 
     await client.query('BEGIN');
@@ -505,7 +549,9 @@ app.post('/api/listings', authenticate, async (req, res) => {
 
     if (!payment || payment.status !== 'success' || payment.used) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'A valid, unused successful payment is required.' });
+      return res.status(400).json({
+        error: 'A valid, unused successful payment is required.'
+      });
     }
 
     if (products.length !== payment.product_count) {
@@ -548,16 +594,8 @@ app.post('/api/listings', authenticate, async (req, res) => {
           price, image_url, product_url, whatsapp, location)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
         [
-          req.user.id,
-          reference,
-          title,
-          description,
-          category,
-          price,
-          imageUrl,
-          productUrl,
-          whatsapp,
-          location
+          req.user.id, reference, title, description, category,
+          price, imageUrl, productUrl, whatsapp, location
         ]
       );
     }
@@ -576,7 +614,9 @@ app.post('/api/listings', authenticate, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('Listing submission error:', error.message);
-    res.status(400).json({ error: error.message || 'Could not submit products.' });
+    res.status(400).json({
+      error: error.message || 'Could not submit products.'
+    });
   } finally {
     client.release();
   }
@@ -618,7 +658,9 @@ app.post('/api/admin/login', rateLimit({
     crypto.timingSafeEqual(expected, supplied);
 
   if (!usernameMatches || !passwordValid) {
-    return res.status(401).json({ error: 'Invalid admin username or password.' });
+    return res.status(401).json({
+      error: 'Invalid admin username or password.'
+    });
   }
 
   const token = createToken(
@@ -644,10 +686,24 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
          FROM payments WHERE status = 'success') AS total_revenue
     `);
 
-    res.json({ stats: result.rows[0] });
+    const row = result.rows[0];
+
+    // Return both top-level values and the stats object for compatibility.
+    res.json({
+      totalSellers: Number(row.total_sellers),
+      totalProducts: Number(row.total_products),
+      pendingProducts: Number(row.pending_products),
+      approvedProducts: Number(row.approved_products),
+      rejectedProducts: Number(row.rejected_products),
+      successfulPayments: Number(row.successful_payments),
+      totalRevenue: Number(row.total_revenue),
+      stats: row
+    });
   } catch (error) {
     console.error('Admin stats error:', error.message);
-    res.status(500).json({ error: 'Could not load dashboard statistics.' });
+    res.status(500).json({
+      error: 'Could not load dashboard statistics.'
+    });
   }
 });
 
@@ -668,7 +724,8 @@ app.get('/api/admin/products', requireAdmin, async (req, res) => {
     );
 
     res.json({ products: result.rows });
-  } catch {
+  } catch (error) {
+    console.error('Admin products error:', error.message);
     res.status(500).json({ error: 'Could not load products.' });
   }
 });
@@ -680,7 +737,9 @@ app.patch('/api/admin/products/:id/status', requireAdmin, async (req, res) => {
     const status = clean(req.body.status, 30);
 
     if (!/^\d+$/.test(id) || !['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid product ID or status.' });
+      return res.status(400).json({
+        error: 'Invalid product ID or status.'
+      });
     }
 
     const result = await pool.query(
@@ -702,7 +761,9 @@ app.patch('/api/admin/products/:id/status', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Product status error:', error.message);
-    res.status(500).json({ error: 'Could not update product status.' });
+    res.status(500).json({
+      error: 'Could not update product status.'
+    });
   }
 });
 
@@ -713,7 +774,7 @@ app.get('/api/admin/payments', requireAdmin, async (req, res) => {
       `SELECT p.id, p.reference, p.amount_kobo,
               p.amount_kobo / 100.0 AS amount,
               p.product_count, p.email, p.status,
-              p.used, p.paid_at, p.created_at,
+              p.payment_mode, p.used, p.paid_at, p.created_at,
               u.name AS seller_name
        FROM payments p
        JOIN users u ON u.id = p.user_id
@@ -722,8 +783,262 @@ app.get('/api/admin/payments', requireAdmin, async (req, res) => {
     );
 
     res.json({ payments: result.rows });
-  } catch {
-    res.status(500).json({ error: 'Could not load payment history.' });
+  } catch (error) {
+    console.error('Admin payments error:', error.message);
+    res.status(500).json({
+      error: 'Could not load payment history.'
+    });
+  }
+});
+
+// ADMIN WALLET SUMMARY AND WITHDRAWAL HISTORY
+app.get('/api/admin/wallet', requireAdmin, async (req, res) => {
+  try {
+    const summaryResult = await pool.query(`
+      SELECT
+        COALESCE((
+          SELECT SUM(amount_kobo)
+          FROM payments
+          WHERE status = 'success' AND payment_mode = 'live'
+        ), 0) AS revenue_kobo,
+        COALESCE((
+          SELECT SUM(amount_kobo)
+          FROM admin_withdrawals
+          WHERE status = 'pending'
+        ), 0) AS pending_kobo
+    `);
+
+    const bankResult = await pool.query(
+      `SELECT bank_name, account_number, account_name
+       FROM admin_wallet_settings
+       WHERE id = 1`
+    );
+
+    const withdrawalsResult = await pool.query(
+      `SELECT id, amount_kobo / 100.0 AS amount,
+              bank_name, account_number, account_name,
+              status, transfer_reference, notes,
+              requested_at, processed_at
+       FROM admin_withdrawals
+       ORDER BY requested_at DESC
+       LIMIT 200`
+    );
+
+    const amounts = walletAmounts(summaryResult.rows[0]);
+    const bank = bankResult.rows[0] || null;
+
+    res.json({
+      ...amounts,
+      bankAccount: bank ? {
+        bankName: bank.bank_name,
+        accountNumber: bank.account_number,
+        accountName: bank.account_name
+      } : null,
+      withdrawals: withdrawalsResult.rows
+    });
+  } catch (error) {
+    console.error('Wallet summary error:', error.message);
+    res.status(500).json({ error: 'Could not load admin wallet.' });
+  }
+});
+
+// SAVE OR UPDATE ADMIN RECEIVING BANK ACCOUNT
+app.post('/api/admin/wallet/bank-account', requireAdmin, async (req, res) => {
+  try {
+    const bankName = clean(req.body.bankName, 120);
+    const accountNumber = clean(req.body.accountNumber, 10);
+    const accountName = clean(req.body.accountName, 150);
+
+    if (!bankName || !/^\d{10}$/.test(accountNumber) || !accountName) {
+      return res.status(400).json({
+        error: 'Enter a bank name, valid 10-digit account number and account name.'
+      });
+    }
+
+    await pool.query(
+      `INSERT INTO admin_wallet_settings
+       (id, bank_name, account_number, account_name, updated_at)
+       VALUES (1, $1, $2, $3, NOW())
+       ON CONFLICT (id)
+       DO UPDATE SET
+         bank_name = EXCLUDED.bank_name,
+         account_number = EXCLUDED.account_number,
+         account_name = EXCLUDED.account_name,
+         updated_at = NOW()`,
+      [bankName, accountNumber, accountName]
+    );
+
+    res.json({
+      success: true,
+      message: 'Bank account details saved.'
+    });
+  } catch (error) {
+    console.error('Bank account save error:', error.message);
+    res.status(500).json({
+      error: 'Could not save bank account details.'
+    });
+  }
+});
+
+// CREATE MANUAL WITHDRAWAL REQUEST
+app.post('/api/admin/wallet/withdrawals', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const amount = Number(req.body.amount);
+
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000000) {
+      return res.status(400).json({
+        error: 'Enter a valid withdrawal amount.'
+      });
+    }
+
+    const amountKobo = Math.round(amount * 100);
+
+    if (!Number.isSafeInteger(amountKobo) || amountKobo <= 0) {
+      return res.status(400).json({
+        error: 'Enter a valid withdrawal amount.'
+      });
+    }
+
+    await client.query('BEGIN');
+
+    // Serialize withdrawal requests to prevent simultaneous over-withdrawal.
+    await client.query(
+      'SELECT pg_advisory_xact_lock($1)',
+      [78124019]
+    );
+
+    const bankResult = await client.query(
+      `SELECT bank_name, account_number, account_name
+       FROM admin_wallet_settings
+       WHERE id = 1`
+    );
+
+    const bank = bankResult.rows[0];
+
+    if (!bank) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: 'Save your bank account details before requesting a withdrawal.'
+      });
+    }
+
+    const balanceResult = await client.query(`
+      SELECT
+        COALESCE((
+          SELECT SUM(amount_kobo)
+          FROM payments
+          WHERE status = 'success' AND payment_mode = 'live'
+        ), 0) AS revenue_kobo,
+        COALESCE((
+          SELECT SUM(amount_kobo)
+          FROM admin_withdrawals
+          WHERE status = 'pending'
+        ), 0) AS pending_kobo
+    `);
+
+    const amounts = walletAmounts(balanceResult.rows[0]);
+    const availableKobo = Math.round(amounts.availableBalance * 100);
+
+    if (amountKobo > availableKobo) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: 'Insufficient available live revenue for this withdrawal.'
+      });
+    }
+
+    const inserted = await client.query(
+      `INSERT INTO admin_withdrawals
+       (amount_kobo, bank_name, account_number, account_name)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, amount_kobo / 100.0 AS amount, status, requested_at`,
+      [amountKobo, bank.bank_name, bank.account_number, bank.account_name]
+    );
+
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      success: true,
+      message: 'Withdrawal request submitted.',
+      withdrawal: inserted.rows[0]
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Withdrawal request error:', error.message);
+    res.status(500).json({
+      error: 'Could not submit withdrawal request.'
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// MARK A WITHDRAWAL AS PAID OR REJECTED
+app.patch('/api/admin/wallet/withdrawals/:id', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const id = req.params.id;
+    const status = clean(req.body.status, 30);
+    const transferReference = clean(req.body.transferReference, 200);
+    const notes = clean(req.body.notes, 1000);
+
+    if (!/^\d+$/.test(id) || !['paid', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        error: 'Invalid withdrawal ID or status.'
+      });
+    }
+
+    if (status === 'paid' && !transferReference) {
+      return res.status(400).json({
+        error: 'A bank transfer reference is required before marking paid.'
+      });
+    }
+
+    await client.query('BEGIN');
+
+    await client.query(
+      'SELECT pg_advisory_xact_lock($1)',
+      [78124019]
+    );
+
+    const result = await client.query(
+      `UPDATE admin_withdrawals
+       SET status = $1,
+           transfer_reference = CASE WHEN $1 = 'paid' THEN $2 ELSE transfer_reference END,
+           notes = $3,
+           processed_at = NOW()
+       WHERE id = $4 AND status = 'pending'
+       RETURNING id, amount_kobo / 100.0 AS amount, status,
+                 transfer_reference, processed_at`,
+      [status, transferReference || null, notes || null, id]
+    );
+
+    if (!result.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        error: 'Pending withdrawal not found. It may already have been processed.'
+      });
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: status === 'paid'
+        ? 'Withdrawal marked as paid.'
+        : 'Withdrawal rejected.',
+      withdrawal: result.rows[0]
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Withdrawal processing error:', error.message);
+    res.status(500).json({
+      error: 'Could not process withdrawal.'
+    });
+  } finally {
+    client.release();
   }
 });
 
@@ -743,7 +1058,9 @@ app.use('/api', (req, res) => {
 
 app.use((error, req, res, next) => {
   console.error('Server error:', error.message);
-  res.status(500).json({ error: 'An unexpected server error occurred.' });
+  res.status(500).json({
+    error: 'An unexpected server error occurred.'
+  });
 });
 
 // START SERVER
@@ -751,6 +1068,7 @@ initializeDatabase()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`VendoSpot running on port ${PORT}`);
+      console.log(`Paystack payment mode: ${PAYMENT_MODE}`);
     });
   })
   .catch(error => {
