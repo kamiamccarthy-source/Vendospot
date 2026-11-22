@@ -1,1 +1,671 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101b35">
+  <meta name="description" content="VendoSpot — Discover products and promote your business.">
+  <title>VendoSpot | Discover. Promote. Sell.</title>
+  <style>
+    :root {
+      --navy:#101b35;
+      --blue:#315efb;
+      --blue2:#2449d8;
+      --ink:#17213a;
+      --muted:#778198;
+      --bg:#f5f7fc;
+      --line:#e8ecf4;
+      --white:#fff;
+      --green:#159b69;
+      --red:#d94b55;
+      --shadow:0 12px 35px rgba(22,39,78,.07);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    a{text-decoration:none;color:inherit}
+    .topbar{background:var(--navy);color:#fff;padding:13px 6%;display:flex;align-items:center;justify-content:space-between;gap:15px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:850;font-size:21px;letter-spacing:-.7px}
+    .brandmark{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,#5c8bff,#315efb);display:grid;place-items:center;font-size:18px}
+    .toplinks{display:flex;align-items:center;gap:22px;font-size:13px;color:#d7def0}
+    .toplinks a:hover{color:#fff}
+    .top-actions{display:flex;gap:9px}
+    .btn{border:0;border-radius:10px;padding:11px 16px;font-weight:750;font-size:13px;transition:.2s}
+    .btn-primary{background:var(--blue);color:#fff}
+    .btn-primary:hover{background:var(--blue2);transform:translateY(-1px)}
+    .btn-light{background:#fff;color:var(--navy)}
+    .btn-outline{background:transparent;border:1px solid var(--line);color:var(--ink)}
+    .btn-danger{background:#fff0f1;color:var(--red)}
+    .hero{background:radial-gradient(circle at 80% 20%,#294b91 0,transparent 30%),linear-gradient(115deg,#101b35,#172b55);color:white;padding:76px 7% 85px}
+    .hero-inner{max-width:1150px;margin:auto;display:grid;grid-template-columns:1.2fr .8fr;align-items:center;gap:45px}
+    .eyebrow{display:inline-flex;gap:8px;align-items:center;background:#ffffff15;border:1px solid #ffffff25;border-radius:30px;padding:8px 13px;color:#dbe5ff;font-size:11px;font-weight:750;letter-spacing:1px;text-transform:uppercase}
+    .hero h1{font-size:clamp(38px,5.5vw,64px);line-height:1.06;letter-spacing:-2.7px;margin:20px 0}
+    .hero h1 span{color:#82a6ff}
+    .hero p{color:#c4cee2;line-height:1.8;max-width:540px;font-size:15px}
+    .hero-buttons{display:flex;gap:12px;margin-top:27px;flex-wrap:wrap}
+    .hero-buttons .btn{padding:14px 19px}
+    .hero-note{font-size:11px;color:#aebbd5;margin-top:17px}
+    .hero-card{background:#ffffff12;border:1px solid #ffffff24;border-radius:22px;padding:25px;backdrop-filter:blur(12px);box-shadow:0 25px 60px #0002}
+    .hero-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .live{font-size:10px;color:#8ff0bd;background:#159b6930;padding:7px 10px;border-radius:20px}
+    .hero-product{background:#fff;border-radius:15px;padding:13px;color:var(--ink);display:flex;gap:13px;align-items:center;margin:11px 0}
+    .product-art{width:57px;height:57px;border-radius:12px;background:linear-gradient(135deg,#e7edff,#cbd8ff);display:grid;place-items:center;font-size:26px;flex-shrink:0}
+    .hero-product strong{font-size:13px}
+    .hero-product small{display:block;color:var(--muted);margin-top:5px;font-size:11px}
+    .section{max-width:1150px;margin:0 auto;padding:55px 22px}
+    .section-head{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:24px}
+    .section-head h2{font-size:27px;letter-spacing:-1px;margin:0 0 7px}
+    .section-head p{margin:0;color:var(--muted);font-size:13px}
+    .searchbar{display:flex;gap:10px;margin:24px 0 30px}
+    .searchbar input{flex:1}
+    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 13px;background:#fff;color:var(--ink);outline:none;font-size:13px}
+    input:focus,select:focus,textarea:focus{border-color:#7796ff;box-shadow:0 0 0 3px #315efb13}
+    textarea{resize:vertical;min-height:90px}
+    .categories{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:25px}
+    .chip{border:1px solid var(--line);background:#fff;padding:9px 14px;border-radius:30px;font-size:11px;color:#59647b}
+    .chip.active,.chip:hover{background:#eaf0ff;border-color:#cbd7ff;color:var(--blue)}
+    .products{display:grid;grid-template-columns:repeat(4,1fr);gap:17px}
+    .product-card{background:#fff;border:1px solid var(--line);border-radius:15px;overflow:hidden;transition:.2s}
+    .product-card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+    .product-image{height:170px;background:linear-gradient(135deg,#eef2ff,#e1e9ff);display:grid;place-items:center;overflow:hidden}
+    .product-image img{width:100%;height:100%;object-fit:cover}
+    .product-image .placeholder{font-size:45px}
+    .product-info{padding:15px}
+    .product-category{font-size:10px;text-transform:uppercase;color:var(--blue);font-weight:800;letter-spacing:.8px}
+    .product-info h3{font-size:14px;margin:8px 0 5px}
+    .product-description{font-size:11px;color:var(--muted);line-height:1.5;min-height:32px}
+    .product-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:13px;gap:8px}
+    .price{font-size:15px;font-weight:850}
+    .location{font-size:10px;color:var(--muted);margin-top:9px}
+    .empty{grid-column:1/-1;text-align:center;background:#fff;padding:45px;border:1px dashed #dce2ef;border-radius:15px;color:var(--muted);font-size:13px}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:17px}
+    .step{background:#fff;padding:24px;border:1px solid var(--line);border-radius:15px}
+    .step-icon{width:42px;height:42px;border-radius:12px;background:#edf2ff;color:var(--blue);display:grid;place-items:center;font-size:19px}
+    .step h3{font-size:15px;margin:15px 0 7px}
+    .step p{font-size:12px;line-height:1.7;color:var(--muted);margin:0}
+    .seller-banner{max-width:1100px;margin:5px auto 60px;padding:35px;background:linear-gradient(110deg,#315efb,#2445c9);border-radius:20px;color:white;display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .seller-banner h2{font-size:25px;margin:0 0 8px}
+    .seller-banner p{font-size:12px;color:#e0e7ff;margin:0}
+    footer{background:var(--navy);color:#c4cee2;padding:35px 6%;font-size:12px}
+    .footer-inner{max-width:1150px;margin:auto;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+    .footer-inner strong{color:#fff}
+    .modal{position:fixed;inset:0;background:#071126a8;z-index:20;display:none;align-items:center;justify-content:center;padding:16px;overflow:auto}
+    .modal.show{display:flex}
+    .modal-box{width:100%;max-width:520px;background:#fff;border-radius:19px;padding:25px;max-height:92vh;overflow:auto;box-shadow:0 25px 80px #0003}
+    .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .modal-head h2{margin:0;font-size:21px;letter-spacing:-.6px}
+    .close{border:0;background:#f1f3f8;width:32px;height:32px;border-radius:9px;font-size:19px}
+    .field{margin:13px 0}
+    .field label{display:block;font-size:11px;font-weight:750;color:#58647a;margin-bottom:7px}
+    .field small{display:block;color:var(--muted);font-size:10px;margin-top:5px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .form-message{padding:11px 13px;border-radius:9px;font-size:12px;display:none;margin:12px 0}
+    .form-message.error{display:block;background:#fff0f1;color:#b52f3a}
+    .form-message.success{display:block;background:#eafaf2;color:#13784f}
+    .modal-switch{text-align:center;color:var(--muted);font-size:12px;margin-top:17px}
+    .link{color:var(--blue);font-weight:750;cursor:pointer}
+    .dashboard{display:none;max-width:1150px;margin:0 auto;padding:35px 22px 60px}
+    .dashboard.show{display:block}
+    .dash-heading{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-bottom:25px}
+    .dash-heading h1{font-size:27px;margin:0 0 5px}
+    .dash-heading p{margin:0;color:var(--muted);font-size:12px}
+    .dash-layout{display:grid;grid-template-columns:220px 1fr;gap:20px}
+    .sidebar,.panel{background:#fff;border:1px solid var(--line);border-radius:15px;padding:17px}
+    .side-link{width:100%;border:0;background:transparent;text-align:left;padding:12px;border-radius:9px;color:#667188;font-size:12px;font-weight:700;margin:3px 0}
+    .side-link.active,.side-link:hover{background:#edf2ff;color:var(--blue)}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:17px}
+    .stat{padding:17px;border:1px solid var(--line);border-radius:12px}
+    .stat small{font-size:10px;color:var(--muted)}
+    .stat strong{display:block;font-size:23px;margin-top:8px}
+    .panel h3{font-size:15px;margin:0 0 15px}
+    .table-wrap{overflow:auto}
+    table{border-collapse:collapse;width:100%;min-width:460px}
+    th,td{text-align:left;padding:12px 9px;border-bottom:1px solid var(--line);font-size:11px}
+    th{color:var(--muted);font-weight:700}
+    .status{display:inline-block;padding:6px 9px;border-radius:20px;font-size:10px;font-weight:750;background:#fff5dc;color:#966b0a}
+    .status.approved{background:#e8f8ef;color:#138050}
+    .status.rejected{background:#fff0f1;color:#c13d48}
+    .status.pending{background:#fff5dc;color:#966b0a}
+    .pricing{background:#f1f5ff;padding:14px;border-radius:11px;margin:15px 0;font-size:12px}
+    .pricing strong{color:var(--blue)}
+    .hidden{display:none!important}
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#17213a;color:#fff;padding:12px 18px;border-radius:10px;font-size:12px;z-index:50;box-shadow:var(--shadow);display:none;max-width:90%;text-align:center}
+    @media(max-width:850px){.products{grid-template-columns:repeat(2,1fr)}.hero-inner{grid-template-columns:1fr}.hero-card{max-width:480px}.toplinks{display:none}}
+    @media(max-width:600px){.topbar{padding:12px 4%}.brand{font-size:18px}.top-actions .btn{padding:9px 10px;font-size:11px}.hero{padding:55px 6%}.hero h1{letter-spacing:-1.7px}.section{padding:40px 16px}.products{gap:10px}.product-image{height:135px}.product-info{padding:11px}.product-info h3{font-size:12px}.product-bottom{align-items:flex-start;flex-direction:column}.steps{grid-template-columns:1fr}.seller-banner{margin:0 15px 40px;padding:25px;align-items:flex-start;flex-direction:column}.dash-layout{grid-template-columns:1fr}.sidebar{display:flex;overflow:auto;gap:5px;padding:8px}.side-link{white-space:nowrap;width:auto}.stats{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.modal-box{padding:19px}.section-head h2{font-size:23px}}
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#" onclick="showHome()">
+    <span class="brandmark">V</span> VendoSpot
+  </a>
+  <nav class="toplinks">
+    <a href="#marketplace">Marketplace</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#sell">For sellers</a>
+  </nav>
+  <div class="top-actions" id="guestActions">
+    <button class="btn btn-light" onclick="openAuth('login')">Log in</button>
+    <button class="btn btn-primary" onclick="openAuth('register')">Get started</button>
+  </div>
+  <div class="top-actions hidden" id="userActions">
+    <button class="btn btn-light" onclick="showDashboard()">My dashboard</button>
+    <button class="btn btn-primary" onclick="logout()">Log out</button>
+  </div>
+</header>
+
+<main id="homeView">
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <span class="eyebrow">✦ The marketplace for growing businesses</span>
+        <h1>Get your products<br>noticed. <span>Get more sales.</span></h1>
+        <p>VendoSpot connects businesses with customers. Discover products, explore local sellers, and give your business the visibility it deserves.</p>
+        <div class="hero-buttons">
+          <a class="btn btn-primary" href="#marketplace">Explore products →</a>
+          <button class="btn btn-light" onclick="openAuth('register')">Start advertising</button>
+        </div>
+        <div class="hero-note">Simple listing pricing · Secure payments · Admin-reviewed listings</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-head"><strong>Discover on VendoSpot</strong><span class="live">● Marketplace</span></div>
+        <div class="hero-product"><div class="product-art">👟</div><div><strong>Fashion & lifestyle</strong><small>Find your next favourite item</small></div></div>
+        <div class="hero-product"><div class="product-art">📱</div><div><strong>Electronics & gadgets</strong><small>Explore products from sellers</small></div></div>
+        <div class="hero-product"><div class="product-art">🏠</div><div><strong>Home & living</strong><small>Discover useful everyday products</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="marketplace">
+    <div class="section-head">
+      <div><h2>Explore products</h2><p>Find products and connect with sellers.</p></div>
+      <button class="btn btn-outline" onclick="loadProducts()">↻ Refresh</button>
+    </div>
+    <div class="searchbar">
+      <input id="searchInput" placeholder="Search products, categories or sellers..." oninput="renderProducts()">
+      <button class="btn btn-primary" onclick="renderProducts()">Search</button>
+    </div>
+    <div class="categories">
+      <button class="chip active" onclick="chooseCategory('All',this)">All products</button>
+      <button class="chip" onclick="chooseCategory('Fashion',this)">Fashion</button>
+      <button class="chip" onclick="chooseCategory('Electronics',this)">Electronics</button>
+      <button class="chip" onclick="chooseCategory('Beauty',this)">Beauty</button>
+      <button class="chip" onclick="chooseCategory('Home',this)">Home & living</button>
+      <button class="chip" onclick="chooseCategory('Other',this)">Other</button>
+    </div>
+    <div class="products" id="productGrid">
+      <div class="empty">Loading marketplace products...</div>
+    </div>
+  </section>
+
+  <section class="section" id="how-it-works">
+    <div class="section-head"><div><h2>How VendoSpot works</h2><p>Three simple steps to put your products in front of customers.</p></div></div>
+    <div class="steps">
+      <div class="step"><div class="step-icon">01</div><h3>Create your account</h3><p>Register as a seller and access your personal dashboard.</p></div>
+      <div class="step"><div class="step-icon">02</div><h3>Pay for your listings</h3><p>Choose at least five products. Each product listing costs ₦500.</p></div>
+      <div class="step"><div class="step-icon">03</div><h3>Submit for review</h3><p>Add your product details. Once approved by the VendoSpot team, your products can appear on the marketplace.</p></div>
+    </div>
+  </section>
+
+  <section class="seller-banner" id="sell">
+    <div><h2>Ready to grow your business?</h2><p>Advertise your products on VendoSpot from just ₦2,500.</p></div>
+    <button class="btn btn-light" onclick="openAuth('register')">Become a seller →</button>
+  </section>
+</main>
+
+<section class="dashboard" id="dashboardView">
+  <div class="dash-heading">
+    <div><h1>Seller dashboard</h1><p>Manage your VendoSpot advertising and products.</p></div>
+    <button class="btn btn-primary" onclick="showPanel('newListing')">＋ Advertise products</button>
+  </div>
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <button class="side-link active" onclick="showPanel('overview',this)">▦ Overview</button>
+      <button class="side-link" onclick="showPanel('newListing',this)">＋ New listing</button>
+      <button class="side-link" onclick="showPanel('myListings',this)">▤ My products</button>
+      <button class="side-link" onclick="showPanel('account',this)">◉ My account</button>
+    </aside>
+    <div>
+      <div class="dash-panel" id="overviewPanel">
+        <div class="stats">
+          <div class="stat"><small>Total products</small><strong id="statTotal">0</strong></div>
+          <div class="stat"><small>Approved</small><strong id="statApproved">0</strong></div>
+          <div class="stat"><small>Pending review</small><strong id="statPending">0</strong></div>
+        </div>
+        <div class="panel"><h3>Welcome to your seller account</h3><p style="font-size:12px;color:#778198;line-height:1.8">Start by creating a listing order. Each product costs ₦500, and you must advertise at least five products per order. Your products will be reviewed before appearing publicly.</p><button class="btn btn-primary" onclick="showPanel('newListing')">Create your first order →</button></div>
+      </div>
+
+      <div class="dash-panel hidden" id="newListingPanel">
+        <div class="panel">
+          <h3>Advertise your products</h3>
+          <p style="font-size:12px;color:#778198;line-height:1.7">Choose how many products you want to advertise. Pay securely with Paystack, then submit your product details.</p>
+          <div class="field"><label>Number of products (minimum 5)</label><input type="number" id="productCount" min="5" step="1" value="5" oninput="calculateTotal()"></div>
+          <div class="pricing">
+            Price per product: <strong>₦500</strong><br>
+            Minimum order: <strong>5 products</strong><br>
+            Total payment: <strong id="orderTotal">₦2,500</strong>
+          </div>
+          <div id="paymentMessage" class="form-message"></div>
+          <button class="btn btn-primary" id="payButton" style="width:100%" onclick="startPayment()">Continue to secure payment →</button>
+          <p style="font-size:10px;color:#778198;text-align:center;margin-top:12px">Your listing payment is processed securely through Paystack.</p>
+        </div>
+        <div class="panel hidden" id="productEntryPanel" style="margin-top:15px">
+          <h3>Submit your paid product order</h3>
+          <p id="paidOrderInfo" style="font-size:12px;color:#778198"></p>
+          <div id="productForms"></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:15px" onclick="submitProducts()">Submit products for review</button>
+          <div id="listingMessage" class="form-message"></div>
+        </div>
+      </div>
+
+      <div class="dash-panel hidden" id="myListingsPanel">
+        <div class="panel"><h3>My advertised products</h3><div class="table-wrap"><table><thead><tr><th>Product</th><th>Price</th><th>Status</th></tr></thead><tbody id="myListingsBody"><tr><td colspan="3">No products loaded.</td></tr></tbody></table></div></div>
+      </div>
+
+      <div class="dash-panel hidden" id="accountPanel">
+        <div class="panel"><h3>Account information</h3><div id="accountDetails" style="font-size:12px;line-height:2;color:#667188"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div><strong>VendoSpot</strong><p>Discover. Promote. Sell.</p></div>
+    <div>© <span id="year"></span> VendoSpot. All rights reserved.</div>
+    <div>Simple. Secure. Transparent.</div>
+  </div>
+</footer>
+
+<div class="modal" id="authModal">
+  <div class="modal-box">
+    <div class="modal-head"><h2 id="authTitle">Create your account</h2><button class="close" onclick="closeModal()">×</button></div>
+    <div id="registerFields">
+      <div class="field"><label>Full name / Business name</label><input id="regName" placeholder="Your name or business name"></div>
+      <div class="field"><label>Email address</label><input id="regEmail" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label>Phone number</label><input id="regPhone" type="tel" placeholder="08012345678"></div>
+      <div class="field"><label>Password</label><input id="regPassword" type="password" placeholder="At least 8 characters"></div>
+    </div>
+    <div id="loginFields" class="hidden">
+      <div class="field"><label>Email address</label><input id="loginEmail" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label>Password</label><input id="loginPassword" type="password" placeholder="Your password"></div>
+    </div>
+    <div id="authMessage" class="form-message"></div>
+    <button class="btn btn-primary" id="authSubmit" style="width:100%" onclick="submitAuth()">Create account</button>
+    <div class="modal-switch"><span id="switchText">Already have an account?</span> <span class="link" id="switchLink" onclick="toggleAuth()">Log in</span></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = "";
+const PRICE_PER_PRODUCT = 500;
+let token = localStorage.getItem("vendospot_token") || "";
+let currentUser = null;
+let products = [];
+let selectedCategory = "All";
+let authMode = "register";
+let paidReference = "";
+let paidProductCount = 0;
+
+document.getElementById("year").textContent = new Date().getFullYear();
+
+function money(value) {
+  return "₦" + Number(value || 0).toLocaleString("en-NG");
+}
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+function toast(message) {
+  const el = document.getElementById("toast");
+  el.textContent = message;
+  el.style.display = "block";
+  setTimeout(() => el.style.display = "none", 3200);
+}
+function message(id, text, type="error") {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = "form-message " + type;
+}
+function clearMessage(id) {
+  const el = document.getElementById(id);
+  el.textContent = "";
+  el.className = "form-message";
+}
+async function api(path, options={}) {
+  const headers = {...(options.headers || {})};
+  if (token) headers.Authorization = "Bearer " + token;
+  if (options.body && !(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
+  const response = await fetch(API + path, {...options, headers});
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || data.message || "Request failed. Please try again.");
+  return data;
+}
+
+function openAuth(mode) {
+  authMode = mode;
+  updateAuthModal();
+  document.getElementById("authModal").classList.add("show");
+}
+function closeModal() {
+  document.getElementById("authModal").classList.remove("show");
+}
+function toggleAuth() {
+  authMode = authMode === "register" ? "login" : "register";
+  updateAuthModal();
+}
+function updateAuthModal() {
+  const register = authMode === "register";
+  document.getElementById("authTitle").textContent = register ? "Create your seller account" : "Welcome back";
+  document.getElementById("registerFields").classList.toggle("hidden", !register);
+  document.getElementById("loginFields").classList.toggle("hidden", register);
+  document.getElementById("authSubmit").textContent = register ? "Create account" : "Log in";
+  document.getElementById("switchText").textContent = register ? "Already have an account?" : "New to VendoSpot?";
+  document.getElementById("switchLink").textContent = register ? "Log in" : "Create account";
+  clearMessage("authMessage");
+}
+async function submitAuth() {
+  const button = document.getElementById("authSubmit");
+  button.disabled = true;
+  button.textContent = "Please wait...";
+  clearMessage("authMessage");
+  try {
+    let result;
+    if (authMode === "register") {
+      const name = document.getElementById("regName").value.trim();
+      const email = document.getElementById("regEmail").value.trim();
+      const phone = document.getElementById("regPhone").value.trim();
+      const password = document.getElementById("regPassword").value;
+      if (!name || !email || !phone || password.length < 8) throw new Error("Enter all details and use a password of at least 8 characters.");
+      result = await api("/api/auth/register", {
+        method:"POST",
+        body:JSON.stringify({name,email,phone,password})
+      });
+    } else {
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      if (!email || !password) throw new Error("Enter your email and password.");
+      result = await api("/api/auth/login", {
+        method:"POST",
+        body:JSON.stringify({email,password})
+      });
+    }
+    if (!result.token) throw new Error("The server did not return a login token.");
+    token = result.token;
+    localStorage.setItem("vendospot_token", token);
+    currentUser = result.user || null;
+    closeModal();
+    await loadAccount();
+    showDashboard();
+    toast("You are now logged in.");
+  } catch (error) {
+    message("authMessage", error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = authMode === "register" ? "Create account" : "Log in";
+  }
+}
+
+async function loadAccount() {
+  if (!token) return;
+  try {
+    const result = await api("/api/auth/me");
+    currentUser = result.user || result;
+    document.getElementById("accountDetails").innerHTML =
+      "<strong>Name:</strong> " + escapeHTML(currentUser.name || currentUser.full_name || "—") + "<br>" +
+      "<strong>Email:</strong> " + escapeHTML(currentUser.email || "—") + "<br>" +
+      "<strong>Phone:</strong> " + escapeHTML(currentUser.phone || "—");
+    document.getElementById("guestActions").classList.add("hidden");
+    document.getElementById("userActions").classList.remove("hidden");
+  } catch (error) {
+    token = "";
+    currentUser = null;
+    localStorage.removeItem("vendospot_token");
+    document.getElementById("guestActions").classList.remove("hidden");
+    document.getElementById("userActions").classList.add("hidden");
+  }
+}
+function logout() {
+  token = "";
+  currentUser = null;
+  localStorage.removeItem("vendospot_token");
+  document.getElementById("guestActions").classList.remove("hidden");
+  document.getElementById("userActions").classList.add("hidden");
+  showHome();
+  toast("You have been logged out.");
+}
+function showHome() {
+  document.getElementById("homeView").classList.remove("hidden");
+  document.getElementById("dashboardView").classList.remove("show");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+async function showDashboard() {
+  if (!token) return openAuth("login");
+  await loadAccount();
+  if (!token) return openAuth("login");
+  document.getElementById("homeView").classList.add("hidden");
+  document.getElementById("dashboardView").classList.add("show");
+  showPanel("overview");
+  loadMyListings();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function showPanel(name, button) {
+  document.querySelectorAll(".dash-panel").forEach(el => el.classList.add("hidden"));
+  document.getElementById(name + "Panel").classList.remove("hidden");
+  document.querySelectorAll(".side-link").forEach(el => el.classList.remove("active"));
+  if (button) button.classList.add("active");
+  else {
+    const links = document.querySelectorAll(".side-link");
+    const index = {overview:0,newListing:1,myListings:2,account:3}[name];
+    if (links[index]) links[index].classList.add("active");
+  }
+}
+
+async function loadProducts() {
+  const grid = document.getElementById("productGrid");
+  grid.innerHTML = '<div class="empty">Loading products...</div>';
+  try {
+    const result = await api("/api/products");
+    products = Array.isArray(result) ? result : (result.products || []);
+    renderProducts();
+  } catch (error) {
+    grid.innerHTML = '<div class="empty">The marketplace is getting ready. Please check back soon.</div>';
+  }
+}
+function chooseCategory(category, button) {
+  selectedCategory = category;
+  document.querySelectorAll(".chip").forEach(el => el.classList.remove("active"));
+  button.classList.add("active");
+  renderProducts();
+}
+function renderProducts() {
+  const grid = document.getElementById("productGrid");
+  const query = document.getElementById("searchInput").value.trim().toLowerCase();
+  const filtered = products.filter(product => {
+    const category = String(product.category || "Other");
+    const text = [product.name,product.title,product.description,product.seller_name,category,product.location].join(" ").toLowerCase();
+    return (selectedCategory === "All" || category.toLowerCase().includes(selectedCategory.toLowerCase())) && text.includes(query);
+  });
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">No approved products found. Please try another search.</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map(product => {
+    const title = product.name || product.title || "Product";
+    const image = product.image_url || product.image || "";
+    const category = product.category || "Other";
+    return `<article class="product-card">
+      <div class="product-image">${image ? `<img src="${escapeHTML(image)}" alt="${escapeHTML(title)}" onerror="this.style.display='none'">` : '<span class="placeholder">🛍️</span>'}</div>
+      <div class="product-info">
+        <div class="product-category">${escapeHTML(category)}</div>
+        <h3>${escapeHTML(title)}</h3>
+        <div class="product-description">${escapeHTML(product.description || "Contact the seller for more information.")}</div>
+        <div class="product-bottom"><span class="price">${money(product.price)}</span><button class="btn btn-primary" onclick="contactSeller('${escapeHTML(product.whatsapp || product.phone || "")}','${escapeHTML(title)}')">Contact seller</button></div>
+        <div class="location">⌖ ${escapeHTML(product.location || "Nigeria")}</div>
+      </div>
+    </article>`;
+  }).join("");
+}
+function contactSeller(phone, productName) {
+  const clean = String(phone).replace(/\D/g,"");
+  if (!clean) return toast("Seller contact is not available yet.");
+  const number = clean.startsWith("0") ? "234" + clean.slice(1) : clean;
+  window.open("https://wa.me/" + number + "?text=" + encodeURIComponent("Hello, I'm interested in " + productName + " on VendoSpot."),"_blank");
+}
+
+function calculateTotal() {
+  const input = document.getElementById("productCount");
+  let count = Number(input.value);
+  if (!Number.isFinite(count) || count < 5) count = 5;
+  document.getElementById("orderTotal").textContent = money(count * PRICE_PER_PRODUCT);
+}
+async function startPayment() {
+  if (!token) return openAuth("login");
+  const count = Number(document.getElementById("productCount").value);
+  if (!Number.isInteger(count) || count < 5 || count > 100) {
+    return message("paymentMessage","Choose a whole number from 5 to 100 products.");
+  }
+  const button = document.getElementById("payButton");
+  button.disabled = true;
+  button.textContent = "Preparing secure payment...";
+  clearMessage("paymentMessage");
+  try {
+    const result = await api("/api/payments/initialize", {
+      method:"POST",
+      body:JSON.stringify({productCount:count})
+    });
+    if (!result.authorization_url) throw new Error("Payment link was not returned by the server.");
+    sessionStorage.setItem("vendospot_pending_reference",result.reference || "");
+    sessionStorage.setItem("vendospot_pending_count",String(count));
+    window.location.href = result.authorization_url;
+  } catch (error) {
+    message("paymentMessage",error.message);
+    button.disabled = false;
+    button.textContent = "Continue to secure payment →";
+  }
+}
+function buildProductForms(count) {
+  const container = document.getElementById("productForms");
+  container.innerHTML = "";
+  for (let i=0;i<count;i++) {
+    const item = document.createElement("div");
+    item.className = "panel";
+    item.style.marginTop = "12px";
+    item.innerHTML = `
+      <h3>Product ${i+1}</h3>
+      <div class="field"><label>Product name</label><input data-field="name" placeholder="Product name" required></div>
+      <div class="form-grid">
+        <div class="field"><label>Price (₦)</label><input data-field="price" type="number" min="0" placeholder="e.g. 15000" required></div>
+        <div class="field"><label>Category</label><select data-field="category"><option>Fashion</option><option>Electronics</option><option>Beauty</option><option>Home</option><option>Other</option></select></div>
+      </div>
+      <div class="field"><label>Product image URL</label><input data-field="image_url" type="url" placeholder="https://example.com/image.jpg"></div>
+      <div class="field"><label>Product description</label><textarea data-field="description" placeholder="Describe your product"></textarea></div>
+      <div class="form-grid">
+        <div class="field"><label>Location</label><input data-field="location" placeholder="City, State"></div>
+        <div class="field"><label>WhatsApp number</label><input data-field="whatsapp" placeholder="08012345678"></div>
+      </div>`;
+    container.appendChild(item);
+  }
+}
+async function submitProducts() {
+  if (!paidReference || !paidProductCount) return message("listingMessage","No paid order was found. Please complete payment first.");
+  const cards = [...document.querySelectorAll("#productForms .panel")];
+  const items = cards.map(card => {
+    const item = {};
+    card.querySelectorAll("[data-field]").forEach(input => item[input.dataset.field] = input.value.trim());
+    item.price = Number(item.price);
+    return item;
+  });
+  if (items.some(item => !item.name || !Number.isFinite(item.price) || item.price < 0 || !item.category)) {
+    return message("listingMessage","Complete each product name, valid price and category.");
+  }
+  const button = document.querySelector("#productEntryPanel button");
+  button.disabled = true;
+  button.textContent = "Submitting products...";
+  clearMessage("listingMessage");
+  try {
+    await api("/api/listings", {
+      method:"POST",
+      body:JSON.stringify({reference:paidReference,products:items})
+    });
+    sessionStorage.removeItem("vendospot_pending_reference");
+    sessionStorage.removeItem("vendospot_pending_count");
+    paidReference = "";
+    paidProductCount = 0;
+    document.getElementById("productEntryPanel").classList.add("hidden");
+    message("paymentMessage","Your products have been submitted for admin review.","success");
+    await loadMyListings();
+    showPanel("myListings");
+    toast("Products submitted successfully.");
+  } catch (error) {
+    message("listingMessage",error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Submit products for review";
+  }
+}
+async function loadMyListings() {
+  if (!token) return;
+  try {
+    const result = await api("/api/seller/listings");
+    const items = Array.isArray(result) ? result : (result.products || result.listings || []);
+    document.getElementById("statTotal").textContent = items.length;
+    document.getElementById("statApproved").textContent = items.filter(x => x.status === "approved").length;
+    document.getElementById("statPending").textContent = items.filter(x => x.status === "pending").length;
+    document.getElementById("myListingsBody").innerHTML = items.length ? items.map(item => {
+      const status = String(item.status || "pending").toLowerCase();
+      return `<tr><td>${escapeHTML(item.name || item.title || "Product")}</td><td>${money(item.price)}</td><td><span class="status ${escapeHTML(status)}">${escapeHTML(status)}</span></td></tr>`;
+    }).join("") : '<tr><td colspan="3">You have not submitted any products yet.</td></tr>';
+  } catch (error) {
+    document.getElementById("myListingsBody").innerHTML = '<tr><td colspan="3">Unable to load your products.</td></tr>';
+  }
+}
+
+async function handlePaymentReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const reference = params.get("reference") || params.get("trxref");
+  const pendingReference = sessionStorage.getItem("vendospot_pending_reference");
+  const count = Number(sessionStorage.getItem("vendospot_pending_count") || 0);
+  if (!reference && !pendingReference) return;
+  const ref = reference || pendingReference;
+  if (!token) return;
+  try {
+    const result = await api("/api/payments/verify/" + encodeURIComponent(ref));
+    if (result.status === "success" || result.paid === true) {
+      paidReference = ref;
+      paidProductCount = count || Number(result.productCount || result.product_count || 5);
+      document.getElementById("productCount").value = paidProductCount;
+      calculateTotal();
+      document.getElementById("paidOrderInfo").textContent = "Payment confirmed. Please enter details for your " + paidProductCount + " products.";
+      buildProductForms(paidProductCount);
+      document.getElementById("productEntryPanel").classList.remove("hidden");
+      message("paymentMessage","Payment confirmed. Your products are ready to be submitted.","success");
+      showDashboard();
+      showPanel("newListing");
+    } else {
+      toast("Payment has not been confirmed. Please contact support if you were charged.");
+    }
+  } catch (error) {
+    toast("We could not confirm this payment yet. Please refresh your dashboard shortly.");
+  } finally {
+    history.replaceState({},document.title,window.location.pathname);
+  }
+}
+
+document.addEventListener("DOMContentLoaded",async()=>{
+  await loadProducts();
+  if (token) {
+    await loadAccount();
+    if (token) await handlePaymentReturn();
+  }
+});
+</script>
+</body>
+</html>
+
