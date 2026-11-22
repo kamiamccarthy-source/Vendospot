@@ -1,279 +1,210 @@
 
 'use strict';
 
+require('dotenv').config();
+
 const express = require('express');
 const path = require('path');
-const crypto = require('crypto');
-const { promisify } = require('util');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
+const crypto = require('crypto');
 
 const app = express();
+
 const PORT = process.env.PORT || 3000;
-const isProduction = process.env.NODE_ENV === 'production';
-
-const scrypt = promisify(crypto.scrypt);
-
-const DATABASE_URL = process.env.DATABASE_URL;
+const APP_URL = (process.env.APP_URL || '').replace(/\/$/, '');
 const JWT_SECRET = process.env.JWT_SECRET;
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-const APP_URL = (
-  process.env.APP_URL ||
-  process.env.RENDER_EXTERNAL_URL ||
-  `http://localhost:${PORT}`
-).replace(/\/$/, '');
 
-if (!DATABASE_URL) {
-  console.error('Missing DATABASE_URL environment variable.');
-  process.exit(1);
+const PRICE_PER_PRODUCT = 500;
+const MIN_PRODUCTS = 5;
+const MAX_PRODUCTS = 100;
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is missing.');
 }
 
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
-  console.error('JWT_SECRET must contain at least 32 characters.');
-  process.exit(1);
+  throw new Error('JWT_SECRET must contain at least 32 characters.');
+}
+
+if (!PAYSTACK_SECRET_KEY) {
+  console.warn('WARNING: PAYSTACK_SECRET_KEY is not configured.');
 }
 
 if (!ADMIN_USERNAME || !ADMIN_PASSWORD || ADMIN_PASSWORD.length < 12) {
-  console.error('Set ADMIN_USERNAME and an ADMIN_PASSWORD of at least 12 characters.');
-  process.exit(1);
+  throw new Error('Set ADMIN_USERNAME and an ADMIN_PASSWORD of at least 12 characters.');
 }
 
 const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: isProduction ? { rejectUnauthorized: false } : false,
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.PGSSL === 'false'
+    ? false
+    : { rejectUnauthorized: false },
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000
 });
 
-app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  if (isProduction) {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        'https://js.paystack.co'
+      ],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https://api.paystack.co'],
+      frameSrc: ['https://checkout.paystack.com'],
+      upgradeInsecureRequests: null
+    }
   }
-  next();
-});
+}));
 
 app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: false, limit: '2mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-// Basic in-memory rate limiting for sensitive endpoints.
-const requestCounts = new Map();
+app.use('/api', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false
+}));
 
-function rateLimit(maxRequests, windowMs) {
-  return (req, res, next) => {
-    const key = `${req.ip}:${req.path}`;
-    const now = Date.now();
-    let entry = requestCounts.get(key);
+app.use(express.static(path.join(__dirname, 'public')));
 
-    if (!entry || now > entry.resetAt) {
-      entry = { count: 0, resetAt: now + windowMs };
-    }
-
-    entry.count += 1;
-    requestCounts.set(key, entry);
-
-    if (entry.count > maxRequests) {
-      return res.status(429).json({
-        error: 'Too many requests. Please try again shortly.'
-      });
-    }
-
-    next();
-  };
+function clean(value, max = 500) {
+  return String(value ?? '').trim().slice(0, max);
 }
 
-// Passwords are stored using Node's built-in scrypt hashing.
-async function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const derived = await scrypt(password, salt, 64);
-  return `${salt}:${derived.toString('hex')}`;
+function validEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-async function verifyPassword(password, storedHash) {
-  if (!storedHash || !storedHash.includes(':')) return false;
-
-  const [salt, hash] = storedHash.split(':');
-  const expected = Buffer.from(hash, 'hex');
-  const actual = await scrypt(password, salt, 64);
-
-  return expected.length === actual.length &&
-    crypto.timingSafeEqual(expected, actual);
+function createToken(payload, expiresIn = '7d') {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 
-function safeEqual(a, b) {
-  const first = Buffer.from(String(a || ''));
-  const second = Buffer.from(String(b || ''));
-
-  return first.length === second.length &&
-    crypto.timingSafeEqual(first, second);
-}
-
-// Signed tokens use HMAC-SHA256.
-function createToken(payload, expiresInSeconds) {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-    .toString('base64url');
-
-  const body = Buffer.from(JSON.stringify({
-    ...payload,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + expiresInSeconds
-  })).toString('base64url');
-
-  const unsigned = `${header}.${body}`;
-  const signature = crypto
-    .createHmac('sha256', JWT_SECRET)
-    .update(unsigned)
-    .digest('base64url');
-
-  return `${unsigned}.${signature}`;
-}
-
-function verifyToken(token) {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-
-    const unsigned = `${parts[0]}.${parts[1]}`;
-    const expected = crypto
-      .createHmac('sha256', JWT_SECRET)
-      .update(unsigned)
-      .digest('base64url');
-
-    if (!safeEqual(parts[2], expected)) return null;
-
-    const payload = JSON.parse(
-      Buffer.from(parts[1], 'base64url').toString('utf8')
-    );
-
-    if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
-      return null;
-    }
-
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-function getBearerToken(req) {
+function authenticate(req, res, next) {
   const header = req.headers.authorization || '';
-  if (!header.startsWith('Bearer ')) return null;
-  return header.slice(7);
-}
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
 
-function requireSeller(req, res, next) {
-  const token = getBearerToken(req);
-  const payload = token ? verifyToken(token) : null;
-
-  if (!payload || payload.role !== 'seller' || !payload.userId) {
-    return res.status(401).json({ error: 'Please log in to continue.' });
+  if (!token) {
+    return res.status(401).json({ error: 'Please log in.' });
   }
 
-  req.user = payload;
-  next();
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    if (decoded.role !== 'seller') {
+      return res.status(403).json({ error: 'Seller access required.' });
+    }
+
+    req.user = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Your session has expired. Please log in again.' });
+  }
 }
 
 function requireAdmin(req, res, next) {
-  const token = getBearerToken(req);
-  const payload = token ? verifyToken(token) : null;
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
 
-  if (!payload || payload.role !== 'admin') {
-    return res.status(401).json({ error: 'Admin access required.' });
+  if (!token) {
+    return res.status(401).json({ error: 'Admin login required.' });
   }
 
-  req.admin = payload;
-  next();
-}
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
 
-function cleanText(value, maxLength = 500) {
-  return String(value ?? '').trim().slice(0, maxLength);
-}
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required.' });
+    }
 
-function validEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || ''));
-}
-
-function publicUser(user) {
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    phone: user.phone,
-    created_at: user.created_at
-  };
+    req.admin = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Admin session expired.' });
+  }
 }
 
 async function initializeDatabase() {
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS sellers (
+    CREATE TABLE IF NOT EXISTS users (
       id BIGSERIAL PRIMARY KEY,
-      name VARCHAR(120) NOT NULL,
+      name VARCHAR(150) NOT NULL,
       email VARCHAR(255) NOT NULL UNIQUE,
-      phone VARCHAR(40),
+      phone VARCHAR(30),
       password_hash TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW()
     );
 
     CREATE TABLE IF NOT EXISTS payments (
       id BIGSERIAL PRIMARY KEY,
-      seller_id BIGINT NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
-      reference VARCHAR(120) NOT NULL UNIQUE,
-      product_count INTEGER NOT NULL CHECK (product_count >= 5),
+      user_id BIGINT NOT NULL REFERENCES users(id),
+      reference VARCHAR(100) NOT NULL UNIQUE,
       amount_kobo BIGINT NOT NULL,
-      currency VARCHAR(3) NOT NULL DEFAULT 'NGN',
-      status VARCHAR(20) NOT NULL DEFAULT 'pending',
-      paystack_response JSONB,
-      products_created BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      paid_at TIMESTAMPTZ
+      product_count INTEGER NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'pending',
+      used BOOLEAN NOT NULL DEFAULT FALSE,
+      paid_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW()
     );
 
     CREATE TABLE IF NOT EXISTS products (
       id BIGSERIAL PRIMARY KEY,
-      seller_id BIGINT NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
-      payment_reference VARCHAR(120) NOT NULL REFERENCES payments(reference),
-      title VARCHAR(180) NOT NULL,
-      description TEXT NOT NULL,
-      price NUMERIC(14,2) NOT NULL DEFAULT 0,
+      user_id BIGINT NOT NULL REFERENCES users(id),
+      payment_reference VARCHAR(100) NOT NULL REFERENCES payments(reference),
+      title VARCHAR(200) NOT NULL,
+      description TEXT,
       category VARCHAR(100),
+      price NUMERIC(14,2),
       image_url TEXT,
-      contact VARCHAR(100),
-      status VARCHAR(20) NOT NULL DEFAULT 'pending',
-      rejection_reason TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      reviewed_at TIMESTAMPTZ
+      product_url TEXT,
+      whatsapp VARCHAR(40),
+      location VARCHAR(150),
+      status VARCHAR(30) NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     );
 
-    CREATE INDEX IF NOT EXISTS products_status_idx ON products(status);
-    CREATE INDEX IF NOT EXISTS products_seller_idx ON products(seller_id);
-    CREATE INDEX IF NOT EXISTS products_created_idx ON products(created_at DESC);
-    CREATE INDEX IF NOT EXISTS payments_seller_idx ON payments(seller_id);
-    CREATE INDEX IF NOT EXISTS payments_status_idx ON payments(status);
+    CREATE INDEX IF NOT EXISTS products_status_idx
+      ON products(status);
+
+    CREATE INDEX IF NOT EXISTS products_user_idx
+      ON products(user_id);
+
+    CREATE INDEX IF NOT EXISTS payments_user_idx
+      ON payments(user_id);
   `);
 
-  console.log('VendoSpot database tables are ready.');
+  console.log('VendoSpot database initialized.');
 }
 
-async function paystackRequest(endpoint, options = {}) {
+async function paystackRequest(endpoint, method = 'GET', body) {
   if (!PAYSTACK_SECRET_KEY) {
-    throw new Error('Paystack is not configured. Set PAYSTACK_SECRET_KEY.');
+    throw new Error('Paystack is not configured.');
   }
 
   const response = await fetch(`https://api.paystack.co${endpoint}`, {
-    ...options,
+    method,
     headers: {
       Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
+      'Content-Type': 'application/json'
+    },
+    ...(body ? { body: JSON.stringify(body) } : {})
   });
 
   const result = await response.json();
@@ -285,149 +216,117 @@ async function paystackRequest(endpoint, options = {}) {
   return result.data;
 }
 
-async function verifyPaystackReference(reference) {
-  const data = await paystackRequest(
-    `/transaction/verify/${encodeURIComponent(reference)}`
-  );
-
-  if (
-    data.status !== 'success' ||
-    data.currency !== 'NGN' ||
-    !data.reference
-  ) {
-    throw new Error('This payment has not been confirmed as successful.');
-  }
-
-  return data;
-}
-
-// Health check.
+// Health check
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
     res.json({ status: 'ok', service: 'VendoSpot' });
   } catch {
-    res.status(503).json({ status: 'error', error: 'Database unavailable.' });
+    res.status(503).json({ status: 'database_unavailable' });
   }
 });
 
-// SELLER REGISTRATION.
-app.post(
-  '/api/auth/register',
-  rateLimit(10, 15 * 60 * 1000),
-  async (req, res) => {
-    try {
-      const name = cleanText(req.body.name, 120);
-      const email = cleanText(req.body.email, 255).toLowerCase();
-      const phone = cleanText(req.body.phone, 40);
-      const password = String(req.body.password || '');
-
-      if (!name || !validEmail(email) || password.length < 8) {
-        return res.status(400).json({
-          error: 'Enter your name, a valid email and a password of at least 8 characters.'
-        });
-      }
-
-      if (password.length > 200) {
-        return res.status(400).json({ error: 'Password is too long.' });
-      }
-
-      const passwordHash = await hashPassword(password);
-
-      const result = await pool.query(
-        `INSERT INTO sellers (name, email, phone, password_hash)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, name, email, phone, created_at`,
-        [name, email, phone || null, passwordHash]
-      );
-
-      const user = result.rows[0];
-      const token = createToken(
-        { userId: String(user.id), role: 'seller' },
-        7 * 24 * 60 * 60
-      );
-
-      res.status(201).json({ token, user: publicUser(user) });
-    } catch (error) {
-      if (error.code === '23505') {
-        return res.status(409).json({
-          error: 'An account with this email already exists.'
-        });
-      }
-
-      console.error('Registration error:', error.message);
-      res.status(500).json({ error: 'Could not create your account.' });
-    }
-  }
-);
-
-// SELLER LOGIN.
-app.post(
-  '/api/auth/login',
-  rateLimit(10, 15 * 60 * 1000),
-  async (req, res) => {
-    try {
-      const email = cleanText(req.body.email, 255).toLowerCase();
-      const password = String(req.body.password || '');
-
-      const result = await pool.query(
-        'SELECT * FROM sellers WHERE email = $1',
-        [email]
-      );
-
-      const user = result.rows[0];
-
-      if (!user || !(await verifyPassword(password, user.password_hash))) {
-        return res.status(401).json({ error: 'Invalid email or password.' });
-      }
-
-      const token = createToken(
-        { userId: String(user.id), role: 'seller' },
-        7 * 24 * 60 * 60
-      );
-
-      res.json({ token, user: publicUser(user) });
-    } catch (error) {
-      console.error('Login error:', error.message);
-      res.status(500).json({ error: 'Login could not be completed.' });
-    }
-  }
-);
-
-// CURRENT SELLER.
-app.get('/api/auth/me', requireSeller, async (req, res) => {
+// SELLER REGISTRATION
+app.post('/api/auth/register', async (req, res) => {
   try {
+    const name = clean(req.body.name, 150);
+    const email = clean(req.body.email, 255).toLowerCase();
+    const phone = clean(req.body.phone, 30);
+    const password = String(req.body.password || '');
+
+    if (!name || !validEmail(email) || password.length < 8) {
+      return res.status(400).json({
+        error: 'Enter your name, a valid email and a password of at least 8 characters.'
+      });
+    }
+
+    if (password.length > 128) {
+      return res.status(400).json({ error: 'Password is too long.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
     const result = await pool.query(
-      `SELECT id, name, email, phone, created_at
-       FROM sellers WHERE id = $1`,
-      [req.user.userId]
+      `INSERT INTO users (name, email, phone, password_hash)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, name, email, phone, created_at`,
+      [name, email, phone || null, passwordHash]
     );
 
-    if (!result.rows[0]) {
+    const user = result.rows[0];
+    const token = createToken({ id: String(user.id), role: 'seller' });
+
+    res.status(201).json({ token, user });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'An account with this email already exists.' });
+    }
+
+    console.error('Registration error:', error.message);
+    res.status(500).json({ error: 'Could not create your account.' });
+  }
+});
+
+// SELLER LOGIN
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const email = clean(req.body.email, 255).toLowerCase();
+    const password = String(req.body.password || '');
+
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+
+    const user = result.rows[0];
+
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const token = createToken({ id: String(user.id), role: 'seller' });
+
+    delete user.password_hash;
+
+    res.json({ token, user });
+  } catch (error) {
+    console.error('Login error:', error.message);
+    res.status(500).json({ error: 'Login failed.' });
+  }
+});
+
+// CURRENT SELLER
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, name, email, phone, created_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    if (!result.rows.length) {
       return res.status(404).json({ error: 'Account not found.' });
     }
 
-    res.json({ user: publicUser(result.rows[0]) });
-  } catch (error) {
-    res.status(500).json({ error: 'Could not load your account.' });
+    res.json({ user: result.rows[0] });
+  } catch {
+    res.status(500).json({ error: 'Could not load account.' });
   }
 });
 
-// PUBLIC MARKETPLACE: APPROVED PRODUCTS ONLY.
+// PUBLIC MARKETPLACE PRODUCTS
 app.get('/api/products', async (req, res) => {
   try {
-    const search = cleanText(req.query.search, 100);
-    const category = cleanText(req.query.category, 100);
+    const search = clean(req.query.search, 100);
+    const category = clean(req.query.category, 100);
 
     const result = await pool.query(
-      `SELECT p.id, p.title, p.description, p.price, p.category,
-              p.image_url, p.contact, p.created_at, s.name AS seller_name
+      `SELECT p.id, p.title, p.description, p.category, p.price,
+              p.image_url, p.product_url, p.whatsapp, p.location,
+              p.created_at, u.name AS seller_name
        FROM products p
-       JOIN sellers s ON s.id = p.seller_id
+       JOIN users u ON u.id = p.user_id
        WHERE p.status = 'approved'
-         AND ($1 = '' OR
-              p.title ILIKE '%' || $1 || '%' OR
-              p.description ILIKE '%' || $1 || '%')
+         AND ($1 = '' OR p.title ILIKE '%' || $1 || '%' OR p.description ILIKE '%' || $1 || '%')
          AND ($2 = '' OR p.category = $2)
        ORDER BY p.created_at DESC
        LIMIT 200`,
@@ -437,297 +336,233 @@ app.get('/api/products', async (req, res) => {
     res.json({ products: result.rows });
   } catch (error) {
     console.error('Marketplace error:', error.message);
-    res.status(500).json({ error: 'Could not load marketplace products.' });
+    res.status(500).json({ error: 'Could not load marketplace.' });
   }
 });
 
-// INITIALIZE A LISTING PAYMENT.
-// ₦500 per product, minimum 5 products.
-app.post(
-  '/api/payments/initialize',
-  requireSeller,
-  rateLimit(10, 10 * 60 * 1000),
-  async (req, res) => {
-    try {
-      const productCount = Number(req.body.productCount);
+// INITIALIZE PAYSTACK PAYMENT
+app.post('/api/payments/initialize', authenticate, async (req, res) => {
+  try {
+    const productCount = Number(req.body.productCount);
 
-      if (
-        !Number.isInteger(productCount) ||
-        productCount < 5 ||
-        productCount > 100
-      ) {
-        return res.status(400).json({
-          error: 'You must advertise at least 5 products. Maximum order is 100 products.'
-        });
-      }
-
-      const sellerResult = await pool.query(
-        'SELECT id, email FROM sellers WHERE id = $1',
-        [req.user.userId]
-      );
-
-      const seller = sellerResult.rows[0];
-      if (!seller) {
-        return res.status(404).json({ error: 'Seller account not found.' });
-      }
-
-      const amountKobo = productCount * 500 * 100;
-      const reference = `VSP-${Date.now()}-${crypto.randomBytes(8).toString('hex')}`;
-
-      await pool.query(
-        `INSERT INTO payments
-         (seller_id, reference, product_count, amount_kobo, currency, status)
-         VALUES ($1, $2, $3, $4, 'NGN', 'pending')`,
-        [seller.id, reference, productCount, amountKobo]
-      );
-
-      try {
-        const payment = await paystackRequest('/transaction/initialize', {
-          method: 'POST',
-          body: JSON.stringify({
-            email: seller.email,
-            amount: amountKobo,
-            currency: 'NGN',
-            reference,
-            callback_url: `${APP_URL}/api/payments/callback`,
-            metadata: {
-              service: 'VendoSpot product listing',
-              seller_id: String(seller.id),
-              product_count: productCount,
-              price_per_product_naira: 500
-            }
-          })
-        });
-
-        res.json({
-          authorization_url: payment.authorization_url,
-          reference,
-          productCount,
-          amount: productCount * 500
-        });
-      } catch (error) {
-        await pool.query(
-          `UPDATE payments SET status = 'failed' WHERE reference = $1`,
-          [reference]
-        );
-        throw error;
-      }
-    } catch (error) {
-      console.error('Payment initialization error:', error.message);
-      res.status(500).json({
-        error: error.message || 'Could not initialize payment.'
+    if (!Number.isInteger(productCount) ||
+        productCount < MIN_PRODUCTS ||
+        productCount > MAX_PRODUCTS) {
+      return res.status(400).json({
+        error: `You must advertise between ${MIN_PRODUCTS} and ${MAX_PRODUCTS} products per order.`
       });
     }
-  }
-);
 
-// PAYSTACK REDIRECT CALLBACK.
-// Paystack redirects here after the customer attempts payment.
+    const userResult = await pool.query(
+      'SELECT email FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    if (!userResult.rows.length) {
+      return res.status(404).json({ error: 'Seller account not found.' });
+    }
+
+    const email = userResult.rows[0].email;
+    const amountKobo = productCount * PRICE_PER_PRODUCT * 100;
+    const reference = `VSP-${crypto.randomUUID()}`;
+
+    await pool.query(
+      `INSERT INTO payments
+       (user_id, reference, amount_kobo, product_count, email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [req.user.id, reference, amountKobo, productCount, email]
+    );
+
+    const payment = await paystackRequest('/transaction/initialize', 'POST', {
+      email,
+      amount: amountKobo,
+      currency: 'NGN',
+      reference,
+      callback_url: `${APP_URL || `https://${req.get('host')}`}/api/payments/callback`,
+      metadata: {
+        seller_id: String(req.user.id),
+        product_count: productCount,
+        custom_fields: [
+          {
+            display_name: 'Product advertising',
+            variable_name: 'product_advertising',
+            value: `${productCount} products`
+          }
+        ]
+      }
+    });
+
+    res.json({
+      authorization_url: payment.authorization_url,
+      reference: payment.reference,
+      amount: amountKobo / 100,
+      productCount
+    });
+  } catch (error) {
+    console.error('Payment initialization error:', error.message);
+    res.status(500).json({ error: error.message || 'Could not initialize payment.' });
+  }
+});
+
+// VERIFY PAYMENT WITH PAYSTACK
+async function verifyPayment(reference, sellerId) {
+  const result = await pool.query(
+    'SELECT * FROM payments WHERE reference = $1',
+    [reference]
+  );
+
+  const payment = result.rows[0];
+
+  if (!payment || (sellerId && String(payment.user_id) !== String(sellerId))) {
+    throw new Error('Payment reference not found for this account.');
+  }
+
+  if (payment.status === 'success') {
+    return payment;
+  }
+
+  const verified = await paystackRequest(
+    `/transaction/verify/${encodeURIComponent(reference)}`
+  );
+
+  if (
+    verified.reference !== payment.reference ||
+    verified.status !== 'success' ||
+    verified.currency !== 'NGN' ||
+    Number(verified.amount) !== Number(payment.amount_kobo) ||
+    String(verified.customer?.email || '').toLowerCase() !== payment.email.toLowerCase()
+  ) {
+    throw new Error('Payment could not be verified. Please contact support if you were charged.');
+  }
+
+  const updated = await pool.query(
+    `UPDATE payments
+     SET status = 'success', paid_at = NOW()
+     WHERE reference = $1 AND status = 'pending'
+     RETURNING *`,
+    [reference]
+  );
+
+  return updated.rows[0] || payment;
+}
+
+app.get('/api/payments/verify/:reference', authenticate, async (req, res) => {
+  try {
+    const reference = clean(req.params.reference, 100);
+    const payment = await verifyPayment(reference, req.user.id);
+
+    res.json({
+      status: payment.status,
+      paid: payment.status === 'success',
+      productCount: payment.product_count,
+      reference: payment.reference
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// PAYSTACK CALLBACK
 app.get('/api/payments/callback', async (req, res) => {
-  const reference = cleanText(req.query.reference, 120);
+  const reference = clean(req.query.reference, 100);
 
   if (!reference) {
-    return res.redirect(`${APP_URL}/?payment=missing_reference`);
+    return res.redirect('/?payment=missing');
   }
 
   try {
-    await verifyPaystackReference(reference);
-    res.redirect(`${APP_URL}/?reference=${encodeURIComponent(reference)}`);
+    await verifyPayment(reference);
+    res.redirect(`/?reference=${encodeURIComponent(reference)}`);
   } catch (error) {
-    console.error('Payment callback verification:', error.message);
-    res.redirect(`${APP_URL}/?payment=not_confirmed&reference=${encodeURIComponent(reference)}`);
+    console.error('Payment callback error:', error.message);
+    res.redirect(`/?payment=failed&reference=${encodeURIComponent(reference)}`);
   }
 });
 
-// VERIFY A PAYMENT FOR THE LOGGED-IN SELLER.
-app.get(
-  '/api/payments/verify/:reference',
-  requireSeller,
-  async (req, res) => {
-    try {
-      const reference = cleanText(req.params.reference, 120);
-
-      const paymentResult = await pool.query(
-        `SELECT * FROM payments
-         WHERE reference = $1 AND seller_id = $2`,
-        [reference, req.user.userId]
-      );
-
-      const payment = paymentResult.rows[0];
-
-      if (!payment) {
-        return res.status(404).json({ error: 'Payment record not found.' });
-      }
-
-      if (payment.status === 'success') {
-        return res.json({
-          status: 'success',
-          paid: true,
-          productCount: payment.product_count,
-          amount: Number(payment.amount_kobo) / 100,
-          productsCreated: payment.products_created
-        });
-      }
-
-      const data = await verifyPaystackReference(reference);
-
-      if (
-        Number(data.amount) !== Number(payment.amount_kobo) ||
-        data.currency !== payment.currency
-      ) {
-        return res.status(400).json({
-          error: 'The verified payment amount does not match this order.'
-        });
-      }
-
-      const result = await pool.query(
-        `UPDATE payments
-         SET status = 'success',
-             paid_at = NOW(),
-             paystack_response = $1
-         WHERE reference = $2 AND seller_id = $3
-         RETURNING product_count, amount_kobo, products_created`,
-        [JSON.stringify(data), reference, req.user.userId]
-      );
-
-      res.json({
-        status: 'success',
-        paid: true,
-        productCount: result.rows[0].product_count,
-        amount: Number(result.rows[0].amount_kobo) / 100,
-        productsCreated: result.rows[0].products_created
-      });
-    } catch (error) {
-      console.error('Payment verification error:', error.message);
-      res.status(400).json({
-        error: error.message || 'Payment could not be verified.'
-      });
-    }
-  }
-);
-
-// SUBMIT PRODUCTS AFTER PAYMENT.
-// A payment can only be used once and only for its exact product count.
-app.post('/api/listings', requireSeller, async (req, res) => {
+// SUBMIT PAID PRODUCTS FOR ADMIN REVIEW
+app.post('/api/listings', authenticate, async (req, res) => {
   const client = await pool.connect();
 
   try {
-    const reference = cleanText(req.body.reference, 120);
+    const reference = clean(req.body.reference, 100);
     const products = req.body.products;
 
     if (!reference || !Array.isArray(products)) {
-      return res.status(400).json({
-        error: 'Payment reference and product list are required.'
-      });
+      return res.status(400).json({ error: 'Payment reference and products are required.' });
     }
 
-    if (products.length < 5 || products.length > 100) {
-      return res.status(400).json({
-        error: 'Submit at least 5 products and no more than 100.'
-      });
-    }
+    await client.query('BEGIN');
 
-    // Confirm payment directly with Paystack, not just the browser.
-    const paymentResult = await pool.query(
+    const paymentResult = await client.query(
       `SELECT * FROM payments
-       WHERE reference = $1 AND seller_id = $2`,
-      [reference, req.user.userId]
+       WHERE reference = $1 AND user_id = $2
+       FOR UPDATE`,
+      [reference, req.user.id]
     );
 
     const payment = paymentResult.rows[0];
 
-    if (!payment) {
-      return res.status(404).json({ error: 'Payment order not found.' });
-    }
-
-    if (payment.products_created) {
-      return res.status(409).json({
-        error: 'Products have already been submitted for this payment.'
-      });
+    if (!payment || payment.status !== 'success' || payment.used) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'A valid, unused successful payment is required.' });
     }
 
     if (products.length !== payment.product_count) {
+      await client.query('ROLLBACK');
       return res.status(400).json({
         error: `This payment covers exactly ${payment.product_count} products.`
       });
     }
 
-    const verified = await verifyPaystackReference(reference);
-
-    if (
-      Number(verified.amount) !== Number(payment.amount_kobo) ||
-      verified.currency !== payment.currency
-    ) {
-      return res.status(400).json({
-        error: 'Payment amount or currency does not match this order.'
-      });
-    }
-
-    await client.query('BEGIN');
-
-    const locked = await client.query(
-      `SELECT * FROM payments
-       WHERE reference = $1 AND seller_id = $2
-       FOR UPDATE`,
-      [reference, req.user.userId]
-    );
-
-    const currentPayment = locked.rows[0];
-
-    if (!currentPayment || currentPayment.products_created) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({
-        error: 'This payment has already been used or is unavailable.'
-      });
-    }
-
-    await client.query(
-      `UPDATE payments
-       SET status = 'success',
-           paid_at = COALESCE(paid_at, NOW()),
-           paystack_response = $1
-       WHERE reference = $2`,
-      [JSON.stringify(verified), reference]
-    );
-
     for (const item of products) {
-      const title = cleanText(item.title || item.name, 180);
-      const description = cleanText(item.description, 5000);
-      const category = cleanText(item.category, 100);
-      const imageUrl = cleanText(item.image_url || item.imageUrl, 2000);
-      const contact = cleanText(item.contact || item.phone || item.whatsapp, 100);
+      const title = clean(item.title, 200);
+      const description = clean(item.description, 5000);
+      const category = clean(item.category, 100);
+      const imageUrl = clean(item.image_url, 2000);
+      const productUrl = clean(item.product_url, 2000);
+      const whatsapp = clean(item.whatsapp, 40);
+      const location = clean(item.location, 150);
 
-      const rawPrice = String(item.price ?? '0').replace(/,/g, '');
-      const price = Number(rawPrice);
+      const price = item.price === '' || item.price == null
+        ? null
+        : Number(item.price);
 
-      if (!title || !description || !Number.isFinite(price) || price < 0) {
-        throw new Error('Each product needs a title, description and valid price.');
+      if (!title) {
+        throw new Error('Every product must have a title.');
       }
 
-      if (imageUrl && !/^https:\/\/\S+$/i.test(imageUrl)) {
-        throw new Error('Product image links must use HTTPS.');
+      if (price !== null && (!Number.isFinite(price) || price < 0)) {
+        throw new Error('Enter a valid product price.');
+      }
+
+      for (const url of [imageUrl, productUrl]) {
+        if (url && !/^https?:\/\//i.test(url)) {
+          throw new Error('Product image and product links must use valid HTTP or HTTPS URLs.');
+        }
       }
 
       await client.query(
         `INSERT INTO products
-         (seller_id, payment_reference, title, description, price,
-          category, image_url, contact, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')`,
+         (user_id, payment_reference, title, description, category,
+          price, image_url, product_url, whatsapp, location)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
         [
-          req.user.userId,
+          req.user.id,
           reference,
           title,
           description,
+          category,
           price,
-          category || null,
-          imageUrl || null,
-          contact || null
+          imageUrl,
+          productUrl,
+          whatsapp,
+          location
         ]
       );
     }
 
     await client.query(
-      `UPDATE payments SET products_created = TRUE WHERE reference = $1`,
+      'UPDATE payments SET used = TRUE WHERE reference = $1',
       [reference]
     );
 
@@ -735,107 +570,101 @@ app.post('/api/listings', requireSeller, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Your products have been submitted for admin review.',
-      submitted: products.length,
-      status: 'pending'
+      message: 'Your products have been submitted for admin review.'
     });
   } catch (error) {
-    try {
-      await client.query('ROLLBACK');
-    } catch {}
-
-    console.error('Product submission error:', error.message);
-    res.status(400).json({
-      error: error.message || 'Could not submit your products.'
-    });
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Listing submission error:', error.message);
+    res.status(400).json({ error: error.message || 'Could not submit products.' });
   } finally {
     client.release();
   }
 });
 
-// SELLER'S OWN PRODUCTS.
-app.get('/api/seller/listings', requireSeller, async (req, res) => {
+// SELLER'S OWN PRODUCTS
+app.get('/api/seller/listings', authenticate, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, title, description, price, category, image_url,
-              contact, status, rejection_reason, created_at, reviewed_at
+      `SELECT id, title, description, category, price, image_url,
+              product_url, whatsapp, location, status, created_at
        FROM products
-       WHERE seller_id = $1
+       WHERE user_id = $1
        ORDER BY created_at DESC`,
-      [req.user.userId]
+      [req.user.id]
     );
 
-    res.json({ products: result.rows, listings: result.rows });
-  } catch (error) {
+    res.json({ products: result.rows });
+  } catch {
     res.status(500).json({ error: 'Could not load your products.' });
   }
 });
 
-// ADMIN LOGIN.
-app.post(
-  '/api/admin/login',
-  rateLimit(8, 15 * 60 * 1000),
-  async (req, res) => {
-    const username = String(req.body.username || '');
-    const password = String(req.body.password || '');
+// ADMIN LOGIN
+app.post('/api/admin/login', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false
+}), async (req, res) => {
+  const username = clean(req.body.username, 100);
+  const password = String(req.body.password || '');
 
-    if (
-      !safeEqual(username, ADMIN_USERNAME) ||
-      !safeEqual(password, ADMIN_PASSWORD)
-    ) {
-      return res.status(401).json({ error: 'Invalid admin username or password.' });
-    }
+  const usernameMatches = username === ADMIN_USERNAME;
+  const passwordMatches = await bcrypt.compare(
+    password,
+    await bcrypt.hash(ADMIN_PASSWORD, 12)
+  ).catch(() => false);
 
-    const token = createToken({ role: 'admin' }, 8 * 60 * 60);
-    res.json({ token });
+  // Also compare the configured password directly using a constant-time comparison.
+  const expected = Buffer.from(ADMIN_PASSWORD);
+  const supplied = Buffer.from(password);
+  const passwordValid = expected.length === supplied.length &&
+    crypto.timingSafeEqual(expected, supplied);
+
+  if (!usernameMatches || !passwordValid) {
+    return res.status(401).json({ error: 'Invalid admin username or password.' });
   }
-);
 
-// ADMIN OVERVIEW.
+  const token = createToken(
+    { role: 'admin', username: ADMIN_USERNAME },
+    '8h'
+  );
+
+  res.json({ token });
+});
+
+// ADMIN OVERVIEW
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        (SELECT COUNT(*) FROM sellers) AS total_sellers,
+        (SELECT COUNT(*) FROM users) AS total_sellers,
         (SELECT COUNT(*) FROM products) AS total_products,
         (SELECT COUNT(*) FROM products WHERE status = 'pending') AS pending_products,
         (SELECT COUNT(*) FROM products WHERE status = 'approved') AS approved_products,
         (SELECT COUNT(*) FROM products WHERE status = 'rejected') AS rejected_products,
         (SELECT COUNT(*) FROM payments WHERE status = 'success') AS successful_payments,
-        (SELECT COALESCE(SUM(amount_kobo), 0)
-         FROM payments WHERE status = 'success') AS total_revenue_kobo
+        (SELECT COALESCE(SUM(amount_kobo), 0) / 100
+         FROM payments WHERE status = 'success') AS total_revenue
     `);
 
-    const row = result.rows[0];
-
-    res.json({
-      ...row,
-      totalSellers: Number(row.total_sellers),
-      totalProducts: Number(row.total_products),
-      pendingProducts: Number(row.pending_products),
-      approvedProducts: Number(row.approved_products),
-      rejectedProducts: Number(row.rejected_products),
-      successfulPayments: Number(row.successful_payments),
-      totalRevenue: Number(row.total_revenue_kobo) / 100
-    });
+    res.json({ stats: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ error: 'Could not load admin statistics.' });
+    console.error('Admin stats error:', error.message);
+    res.status(500).json({ error: 'Could not load dashboard statistics.' });
   }
 });
 
-// ADMIN PRODUCT REVIEW LIST.
+// ADMIN PRODUCT MANAGEMENT
 app.get('/api/admin/products', requireAdmin, async (req, res) => {
   try {
-    const status = cleanText(req.query.status, 20);
-    const allowed = ['pending', 'approved', 'rejected'];
+    const status = clean(req.query.status, 30);
 
+    const allowed = ['pending', 'approved', 'rejected'];
     const result = await pool.query(
-      `SELECT p.id, p.seller_id, p.payment_reference, p.title,
-              p.description, p.price, p.category, p.image_url, p.contact,
-              p.status, p.rejection_reason, p.created_at, p.reviewed_at,
-              s.name AS seller_name, s.email AS seller_email, s.phone AS seller_phone
+      `SELECT p.*, u.name AS seller_name, u.email AS seller_email
        FROM products p
-       JOIN sellers s ON s.id = p.seller_id
+       JOIN users u ON u.id = p.user_id
        WHERE ($1 = '' OR p.status = $1)
        ORDER BY p.created_at DESC
        LIMIT 500`,
@@ -843,117 +672,92 @@ app.get('/api/admin/products', requireAdmin, async (req, res) => {
     );
 
     res.json({ products: result.rows });
-  } catch (error) {
-    res.status(500).json({ error: 'Could not load products for review.' });
+  } catch {
+    res.status(500).json({ error: 'Could not load products.' });
   }
 });
 
-// APPROVE OR REJECT A PRODUCT.
-app.patch(
-  '/api/admin/products/:id/status',
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const id = String(req.params.id);
-      const status = cleanText(req.body.status, 20);
-      const reason = cleanText(req.body.reason || req.body.rejection_reason, 1000);
+// APPROVE OR REJECT PRODUCT
+app.patch('/api/admin/products/:id/status', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const status = clean(req.body.status, 30);
 
-      if (!/^\d+$/.test(id) || !['approved', 'rejected'].includes(status)) {
-        return res.status(400).json({ error: 'Invalid product or review status.' });
-      }
-
-      if (status === 'rejected' && !reason) {
-        return res.status(400).json({
-          error: 'Please provide a reason for rejecting this product.'
-        });
-      }
-
-      const result = await pool.query(
-        `UPDATE products
-         SET status = $1,
-             rejection_reason = $2,
-             reviewed_at = NOW()
-         WHERE id = $3
-         RETURNING id, title, status, rejection_reason, reviewed_at`,
-        [status, status === 'rejected' ? reason : null, id]
-      );
-
-      if (!result.rows[0]) {
-        return res.status(404).json({ error: 'Product not found.' });
-      }
-
-      res.json({
-        success: true,
-        message: `Product ${status}.`,
-        product: result.rows[0]
-      });
-    } catch (error) {
-      res.status(500).json({ error: 'Could not update product status.' });
+    if (!/^\d+$/.test(id) || !['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid product ID or status.' });
     }
-  }
-);
 
-// ADMIN PAYMENT HISTORY.
+    const result = await pool.query(
+      `UPDATE products
+       SET status = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [status, id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Product not found.' });
+    }
+
+    res.json({
+      success: true,
+      message: `Product ${status}.`,
+      product: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Product status error:', error.message);
+    res.status(500).json({ error: 'Could not update product status.' });
+  }
+});
+
+// ADMIN PAYMENT HISTORY
 app.get('/api/admin/payments', requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT p.id, p.seller_id, p.reference, p.product_count,
-              p.amount_kobo, p.currency, p.status, p.products_created,
-              p.created_at, p.paid_at,
-              s.name AS seller_name, s.email AS seller_email
+      `SELECT p.id, p.reference, p.amount_kobo,
+              p.amount_kobo / 100.0 AS amount,
+              p.product_count, p.email, p.status,
+              p.used, p.paid_at, p.created_at,
+              u.name AS seller_name
        FROM payments p
-       JOIN sellers s ON s.id = p.seller_id
+       JOIN users u ON u.id = p.user_id
        ORDER BY p.created_at DESC
        LIMIT 500`
     );
 
-    const payments = result.rows.map(payment => ({
-      ...payment,
-      amount: Number(payment.amount_kobo) / 100
-    }));
-
-    res.json({ payments });
-  } catch (error) {
+    res.json({ payments: result.rows });
+  } catch {
     res.status(500).json({ error: 'Could not load payment history.' });
   }
 });
 
-// Serve the customer portal and admin dashboard.
-const publicDirectory = path.join(__dirname, 'public');
-app.use(express.static(publicDirectory));
-
+// FRONTEND ROUTES
 app.get('/', (req, res) => {
-  res.sendFile(path.join(publicDirectory, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/admin.html', (req, res) => {
-  res.sendFile(path.join(publicDirectory, 'admin.html'));
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Unknown API route.
+// NOT FOUND
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found.' });
 });
 
-// General error handler.
 app.use((error, req, res, next) => {
   console.error('Server error:', error.message);
-  if (res.headersSent) return next(error);
   res.status(500).json({ error: 'An unexpected server error occurred.' });
 });
 
-async function startServer() {
-  try {
-    await initializeDatabase();
-
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`VendoSpot is running on port ${PORT}.`);
+// START SERVER
+initializeDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`VendoSpot running on port ${PORT}`);
     });
-  } catch (error) {
-    console.error('VendoSpot startup failed:', error);
+  })
+  .catch(error => {
+    console.error('Database initialization failed:', error);
     process.exit(1);
-  }
-}
-
-startServer();
-
+  });
