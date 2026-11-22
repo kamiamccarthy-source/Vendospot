@@ -246,14 +246,22 @@ async function paystackRequest(endpoint, method = 'GET', body) {
   return result.data;
 }
 
+// ADMIN WALLET BALANCE CALCULATION
+// Paid withdrawals remain deducted permanently.
+// Pending withdrawals are reserved.
+// Rejected withdrawals are released.
 function walletAmounts(row) {
   const revenueKobo = Number(row.revenue_kobo || 0);
   const pendingKobo = Number(row.pending_kobo || 0);
+  const paidKobo = Number(row.paid_kobo || 0);
 
   return {
     totalLiveRevenue: revenueKobo / 100,
     pendingWithdrawalAmount: pendingKobo / 100,
-    availableBalance: Math.max(0, revenueKobo - pendingKobo) / 100
+    availableBalance: Math.max(
+      0,
+      revenueKobo - pendingKobo - paidKobo
+    ) / 100
   };
 }
 
@@ -688,7 +696,6 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 
     const row = result.rows[0];
 
-    // Return both top-level values and the stats object for compatibility.
     res.json({
       totalSellers: Number(row.total_sellers),
       totalProducts: Number(row.total_products),
@@ -801,11 +808,18 @@ app.get('/api/admin/wallet', requireAdmin, async (req, res) => {
           FROM payments
           WHERE status = 'success' AND payment_mode = 'live'
         ), 0) AS revenue_kobo,
+
         COALESCE((
           SELECT SUM(amount_kobo)
           FROM admin_withdrawals
           WHERE status = 'pending'
-        ), 0) AS pending_kobo
+        ), 0) AS pending_kobo,
+
+        COALESCE((
+          SELECT SUM(amount_kobo)
+          FROM admin_withdrawals
+          WHERE status = 'paid'
+        ), 0) AS paid_kobo
     `);
 
     const bankResult = await pool.query(
@@ -931,11 +945,18 @@ app.post('/api/admin/wallet/withdrawals', requireAdmin, async (req, res) => {
           FROM payments
           WHERE status = 'success' AND payment_mode = 'live'
         ), 0) AS revenue_kobo,
+
         COALESCE((
           SELECT SUM(amount_kobo)
           FROM admin_withdrawals
           WHERE status = 'pending'
-        ), 0) AS pending_kobo
+        ), 0) AS pending_kobo,
+
+        COALESCE((
+          SELECT SUM(amount_kobo)
+          FROM admin_withdrawals
+          WHERE status = 'paid'
+        ), 0) AS paid_kobo
     `);
 
     const amounts = walletAmounts(balanceResult.rows[0]);
